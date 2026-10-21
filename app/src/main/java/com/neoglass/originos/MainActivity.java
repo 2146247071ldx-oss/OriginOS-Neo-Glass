@@ -9,12 +9,9 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -45,7 +42,7 @@ public class MainActivity extends Activity {
         ScrollView scrollView = new ScrollView(this);
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setPadding(50, 100, 50, 100);
+        rootLayout.setPadding(40, 60, 40, 60);
         rootLayout.setGravity(Gravity.CENTER);
         scrollView.addView(rootLayout, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -66,72 +63,36 @@ public class MainActivity extends Activity {
         cardLayout.setElevation(30f);
 
         TextView title = new TextView(this);
-        title.setText("Origin Cyber");
+        title.setText("iQOO 充电优化");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(32f);
+        title.setTextSize(30f);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, 10);
         cardLayout.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("手感引擎 · 赛博弹幕");
+        subtitle.setText("电池保养 · 拒绝发烫");
         subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
         subtitle.setTextSize(14f);
         subtitle.setGravity(Gravity.CENTER);
         subtitle.setPadding(0, 0, 0, 50);
         cardLayout.addView(subtitle);
 
-        // 弹簧动画开关
-        addSwitch(cardLayout, "全局 Q 弹动画", "spring_anim", "替换底层插值器，带来果冻般跟手感");
-
-        // 弹幕输入框
-        TextView label = new TextView(this);
-        label.setText("状态栏赛博弹幕文字:");
-        label.setTextColor(Color.WHITE);
-        label.setTextSize(16f);
-        label.setTypeface(Typeface.DEFAULT_BOLD);
-        label.setPadding(0, 30, 0, 10);
-        cardLayout.addView(label);
-
-        EditText input = new EditText(this);
-        input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.parseColor("#80FFFFFF"));
-        input.setHint("输入你想展示的文字...");
-        input.setText(prefs.getString("ticker_text", "Origin Cyber 极客专属"));
-        
-        // 输入框的毛玻璃背景
-        GradientDrawable inputBg = new GradientDrawable();
-        inputBg.setColor(Color.parseColor("#26FFFFFF"));
-        inputBg.setCornerRadius(20f);
-        input.setBackground(inputBg);
-        input.setPadding(30, 20, 30, 20);
-        cardLayout.addView(input);
-
-        // 监听文字改变并保存
-        input.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                prefs.edit().putString("ticker_text", s.toString()).apply();
-                try { Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml"); } catch (Exception ignored) {}
-            }
-            @Override public void afterTextChanged(Editable s) {}
-        });
-
-        // 跑马灯开关
-        addSwitch(cardLayout, "状态栏跑马灯", "ticker_on", "将文字强行插入状态栏左侧滚动显示");
+        // 核心功能
+        addSwitch(cardLayout, "限制充电上限 (80%)", "limit_charge", "达到80%系统视为已满，减缓电池老化");
+        addSwitch(cardLayout, "亮屏强制慢充", "screen_slow_charge", "亮屏使用时断开超级快充，杜绝发热");
 
         TextView warn = new TextView(this);
-        warn.setText("⚠️ 需在 LSPosed 中勾选“系统界面”并重启");
+        warn.setText("⚠️ 需在 LSPosed 勾选“系统框架(android)”并重启手机");
         warn.setTextColor(Color.parseColor("#B3FFD700"));
         warn.setTextSize(12f);
         warn.setGravity(Gravity.CENTER);
         warn.setPadding(0, 30, 0, 0);
         cardLayout.addView(warn);
 
-        // 酷安链接
         TextView author = new TextView(this);
-        author.setText("极客开发 | 酷安: @惩煦"); 
+        author.setText("酷安: @惩煦"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
@@ -205,10 +166,10 @@ public class MainActivity extends Activity {
         try {
             switchView.setThumbTintList(new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{Color.parseColor("#26D0CE"), Color.parseColor("#80FFFFFF")}));
+                    new int[]{Color.parseColor("#26D0CE"), Color.parseColor("#E6FFFFFF")}));
             switchView.setTrackTintList(new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#26FFFFFF")}));
+                    new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#40FFFFFF")}));
         } catch (Throwable ignored) {}
 
         switchView.setOnCheckedChangeListener((buttonView, checked) -> {
