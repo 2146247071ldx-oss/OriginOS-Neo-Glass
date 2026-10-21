@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
 
         // 7. 底部作者链接
         TextView author = new TextView(this);
-        author.setText("开发预览版 | 酷安: @林东旭"); 
+        author.setText("开发预览版 | 酷安: @惩煦"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
