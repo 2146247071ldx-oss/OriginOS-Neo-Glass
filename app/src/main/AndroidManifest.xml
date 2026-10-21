@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="OriginOS 极客引擎"
+        android:label="OriginBreaker"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
         <meta-data
@@ -12,7 +12,7 @@
 
         <meta-data
             android:name="xposeddescription"
-            android:value="全能神器：全局弹簧手感、状态栏跑马灯、通知高斯模糊模拟、底层的极限电池保护与防流氓唤醒。" />
+            android:value="OriginBreaker：底层温控欺骗、强制截屏、充电限制与全局动画微调。" />
 
         <meta-data
             android:name="xposedminversion"
