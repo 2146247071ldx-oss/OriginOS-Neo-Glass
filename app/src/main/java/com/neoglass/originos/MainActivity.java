@@ -1,14 +1,14 @@
 package com.neoglass.originos;
 
-import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -24,9 +24,14 @@ import java.io.DataOutputStream;
 public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
-    private View backgroundView;
-    private ValueAnimator colorAnimator;
-
+    
+    // 动态颜色变量
+    private int COLOR_BG;
+    private int COLOR_CARD;
+    private int COLOR_TEXT_MAIN;
+    private int COLOR_TEXT_SUB;
+    private int COLOR_ACCENT;
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,84 +41,121 @@ public class MainActivity extends Activity {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
 
-        android.widget.FrameLayout frameLayout = new android.widget.FrameLayout(this);
-
-        backgroundView = new View(this);
-        frameLayout.addView(backgroundView, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        startAuroraAnimation();
+        // 初始化颜色（读取系统深浅色与 Monet 状态）
+        initColors();
 
         ScrollView scrollView = new ScrollView(this);
+        scrollView.setBackgroundColor(COLOR_BG);
+        scrollView.setFillViewport(true);
+
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setPadding(40, 80, 40, 80);
-        rootLayout.setGravity(Gravity.CENTER);
-        scrollView.addView(rootLayout, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        frameLayout.addView(scrollView);
+        rootLayout.setPadding(60, 100, 60, 100);
+        scrollView.addView(rootLayout);
 
-        LinearLayout cardLayout = new LinearLayout(this);
-        cardLayout.setOrientation(LinearLayout.VERTICAL);
-        cardLayout.setPadding(50, 60, 50, 60);
-        cardLayout.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        GradientDrawable glassDrawable = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#1AFFFFFF")}
-        );
-        glassDrawable.setCornerRadius(80f);
-        glassDrawable.setStroke(2, Color.parseColor("#66FFFFFF"));
-        cardLayout.setBackground(glassDrawable);
-        cardLayout.setElevation(30f);
-
+        // ================= 顶部大标题 =================
         TextView title = new TextView(this);
-        title.setText("OriginOS 极客引擎");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(28f);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 10);
-        cardLayout.addView(title);
+        title.setText("Origin Engine");
+        title.setTextColor(COLOR_TEXT_MAIN);
+        title.setTextSize(36f);
+        title.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+        title.setPadding(0, 0, 0, 40);
+        rootLayout.addView(title);
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("全面美化 · 底层控制");
-        subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
-        subtitle.setTextSize(14f);
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 0, 0, 40);
-        cardLayout.addView(subtitle);
-
-        // === 美化分类 ===
-        addCategoryTitle(cardLayout, "✨ 系统美化");
-        addSwitch(cardLayout, "全局 Q 弹动画", "spring_anim", "替换底层插值器，带来果冻般跟手感");
-        addSwitch(cardLayout, "通知卡片极光化", "glass_notification", "强行修改通知面板背景和圆角，模拟毛玻璃");
-
-        // === 电池分类 ===
-        addCategoryTitle(cardLayout, "🔋 电池保护");
-        addSwitch(cardLayout, "限制充电上限 (80%)", "limit_charge", "达到80%系统视为已满，减缓电池老化");
-        addSwitch(cardLayout, "息屏断网休眠 (Wakelock杀手)", "wakelock_killer", "息屏后强制没收后台流氓唤醒锁，极速省电");
-
-        // 一键崩溃重启系统界面按钮（UI美化测试用）
-        TextView restartBtn = new TextView(this);
-        restartBtn.setText("重启界面 / 框架 (双模)");
-        restartBtn.setTextColor(Color.WHITE);
-        restartBtn.setTextSize(15f);
-        restartBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        restartBtn.setGravity(Gravity.CENTER);
-        restartBtn.setPadding(40, 40, 40, 40);
+        // ================= 卡片 0：主题设置 =================
+        LinearLayout themeCard = createCard();
+        addCategoryTitle(themeCard, "🎨 主题设置");
         
-        GradientDrawable btnDrawable = new GradientDrawable();
-        btnDrawable.setColor(Color.parseColor("#33FF9800")); 
-        btnDrawable.setCornerRadius(40f);
-        btnDrawable.setStroke(2, Color.parseColor("#80FF9800"));
-        restartBtn.setBackground(btnDrawable);
+        // 1. 深色模式选择（模拟 3 个按钮）
+        LinearLayout modeRow = new LinearLayout(this);
+        modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        modeRow.setPadding(0, 10, 0, 30);
         
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnParams.setMargins(0, 40, 0, 20);
-        restartBtn.setLayoutParams(btnParams);
+        int currentMode = prefs.getInt("theme_mode", 0); // 0跟随, 1浅色, 2深色
+        String[] modes = {"跟随系统", "浅色", "深色"};
+        for (int i = 0; i < 3; i++) {
+            TextView btn = new TextView(this);
+            btn.setText(modes[i]);
+            btn.setTextSize(14f);
+            btn.setGravity(Gravity.CENTER);
+            btn.setPadding(0, 20, 0, 20);
+            
+            // 按钮背景
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(30f);
+            if (currentMode == i) {
+                bg.setColor(COLOR_ACCENT); // 选中状态用强调色
+                btn.setTextColor(Color.WHITE);
+            } else {
+                bg.setColor(Color.parseColor("#15000000")); // 未选中半透明
+                btn.setTextColor(COLOR_TEXT_MAIN);
+            }
+            btn.setBackground(bg);
+            
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            p.setMargins(10, 0, 10, 0);
+            btn.setLayoutParams(p);
+            
+            final int modeIndex = i;
+            btn.setOnClickListener(v -> {
+                prefs.edit().putInt("theme_mode", modeIndex).apply();
+                recreate(); // 重启 Activity 应用新主题
+            });
+            modeRow.addView(btn);
+        }
+        themeCard.addView(modeRow);
 
-        restartBtn.setOnClickListener(v -> {
+        // 2. 启用 Monet 颜色开关
+        addSwitchRow(themeCard, "启用 Monet 颜色", "monet_enabled", "提取壁纸颜色，自动适配全局 UI", true);
+
+        rootLayout.addView(themeCard);
+
+        // ================= 卡片 1：系统美化 =================
+        LinearLayout beautyCard = createCard();
+        addCategoryTitle(beautyCard, "✨ 系统美化");
+        addSwitchRow(beautyCard, "全局 Q 弹动画", "spring_anim", "替换底层插值器，带来果冻般跟手感", false);
+        addSwitchRow(beautyCard, "通知卡片极光化", "glass_notification", "强行修改通知面板背景和圆角，模拟毛玻璃", false);
+        rootLayout.addView(beautyCard);
+
+        // ================= 卡片 2：电池保护 =================
+        LinearLayout batteryCard = createCard();
+        addCategoryTitle(batteryCard, "🔋 电池保护");
+        addSwitchRow(batteryCard, "限制充电上限 (80%)", "limit_charge", "达到80%系统视为已满，减缓电池老化", false);
+        addSwitchRow(batteryCard, "息屏断网休眠 (Wakelock杀手)", "wakelock_killer", "息屏后强制没收后台流氓唤醒锁，极速省电", false);
+        rootLayout.addView(batteryCard);
+
+        // ================= 卡片 3：重启按钮 =================
+        LinearLayout actionCard = createCard();
+        actionCard.setOrientation(LinearLayout.HORIZONTAL);
+        actionCard.setGravity(Gravity.CENTER_VERTICAL);
+        
+        TextView icon = new TextView(this);
+        icon.setText("↻");
+        icon.setTextColor(COLOR_ACCENT);
+        icon.setTextSize(30f);
+        icon.setPadding(0, 0, 30, 0);
+        actionCard.addView(icon);
+
+        LinearLayout actionTextLayout = new LinearLayout(this);
+        actionTextLayout.setOrientation(LinearLayout.VERTICAL);
+        
+        TextView actionTitle = new TextView(this);
+        actionTitle.setText("重启界面 / 框架 (双模)");
+        actionTitle.setTextColor(COLOR_TEXT_MAIN);
+        actionTitle.setTextSize(16f);
+        actionTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        
+        TextView actionDesc = new TextView(this);
+        actionDesc.setText("重载系统 UI 或底层框架，使设置生效");
+        actionDesc.setTextColor(COLOR_TEXT_SUB);
+        actionDesc.setTextSize(12f);
+        actionDesc.setPadding(0, 5, 0, 0);
+
+        actionTextLayout.addView(actionTitle);
+        actionTextLayout.addView(actionDesc);
+        actionCard.addView(actionTextLayout);
+
+        actionCard.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
                 .setTitle("选择重启方式")
                 .setMessage("【系统界面】：黑屏1秒，测试美化（跑马灯/动画）。\n【系统框架】：黑屏5秒，测试底层（电池/唤醒）。")
@@ -122,23 +164,152 @@ public class MainActivity extends Activity {
                 .setNegativeButton("取消", null)
                 .show();
         });
-        cardLayout.addView(restartBtn);
+        rootLayout.addView(actionCard);
 
+        // 底部
         TextView author = new TextView(this);
-        author.setText("酷安: @惩煦"); 
-        author.setTextColor(Color.parseColor("#80FFFFFF")); 
-        author.setTextSize(13f);
+        author.setText("酷安: @惩煦");
+        author.setTextColor(COLOR_TEXT_SUB);
+        author.setTextSize(12f);
         author.setGravity(Gravity.CENTER);
-        author.setPadding(0, 30, 0, 10);
+        author.setPadding(0, 50, 0, 0);
         author.setOnClickListener(v -> {
             try {
                 startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.coolapk.com/u/39927079")));
             } catch (Exception ignored) {}
         });
-        cardLayout.addView(author);
+        rootLayout.addView(author);
 
-        rootLayout.addView(cardLayout);
-        setContentView(frameLayout);
+        setContentView(scrollView);
+    }
+
+    // 动态初始化颜色
+    private void initColors() {
+        int mode = prefs.getInt("theme_mode", 0);
+        boolean monet = prefs.getBoolean("monet_enabled", false);
+        boolean isSystemDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        
+        boolean useDark = false;
+        if (mode == 0) useDark = isSystemDark;
+        else if (mode == 2) useDark = true;
+
+        // 1. 如果有 Monet 且系统 >= Android 12 (API 31)
+        if (monet && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                // 强行读取系统原生的 Monet 取色资源
+                COLOR_ACCENT = getResources().getColor(useDark ? android.R.color.system_accent1_200 : android.R.color.system_accent1_500, getTheme());
+                COLOR_BG = getResources().getColor(useDark ? android.R.color.system_neutral1_900 : android.R.color.system_neutral1_50, getTheme());
+                COLOR_CARD = getResources().getColor(useDark ? android.R.color.system_neutral1_800 : android.R.color.system_neutral1_100, getTheme());
+                COLOR_TEXT_MAIN = getResources().getColor(useDark ? android.R.color.system_neutral1_100 : android.R.color.system_neutral1_900, getTheme());
+                COLOR_TEXT_SUB = getResources().getColor(useDark ? android.R.color.system_neutral1_300 : android.R.color.system_neutral1_700, getTheme());
+                return;
+            } catch (Throwable ignored) {}
+        }
+
+        // 2. 降级方案（未开启 Monet 或系统版本过低）
+        if (useDark) {
+            COLOR_BG = Color.parseColor("#1A1A1A");
+            COLOR_CARD = Color.parseColor("#282828");
+            COLOR_TEXT_MAIN = Color.parseColor("#F0F0F0");
+            COLOR_TEXT_SUB = Color.parseColor("#888888");
+            COLOR_ACCENT = Color.parseColor("#8C9EFF"); // 淡蓝色
+        } else {
+            COLOR_BG = Color.parseColor("#F7F8FA");
+            COLOR_CARD = Color.parseColor("#FFFFFF");
+            COLOR_TEXT_MAIN = Color.parseColor("#1A1A1A");
+            COLOR_TEXT_SUB = Color.parseColor("#888888");
+            COLOR_ACCENT = Color.parseColor("#5C6BC0"); // 淡紫蓝色
+        }
+    }
+
+    // ================= 辅助方法 =================
+
+    private LinearLayout createCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(50, 50, 50, 50);
+        
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(COLOR_CARD);
+        shape.setCornerRadius(60f);
+        card.setBackground(shape);
+        
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, 0, 40);
+        card.setLayoutParams(params);
+        card.setElevation(10f);
+        
+        return card;
+    }
+
+    private void addCategoryTitle(LinearLayout parent, String titleText) {
+        TextView cat = new TextView(this);
+        cat.setText(titleText);
+        cat.setTextColor(COLOR_TEXT_MAIN);
+        cat.setTextSize(18f);
+        cat.setTypeface(Typeface.DEFAULT_BOLD);
+        cat.setPadding(0, 0, 0, 30);
+        parent.addView(cat);
+    }
+
+    private void addSwitchRow(LinearLayout parent, String labelText, final String prefKey, String descText, boolean forceRecreate) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, 20, 0, 20);
+
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        textLayout.setLayoutParams(textParams);
+
+        TextView label = new TextView(this);
+        label.setText(labelText);
+        label.setTextColor(COLOR_TEXT_MAIN);
+        label.setTextSize(16f);
+
+        TextView desc = new TextView(this);
+        desc.setText(descText);
+        desc.setTextColor(COLOR_TEXT_SUB);
+        desc.setTextSize(12f);
+        desc.setPadding(0, 5, 0, 0);
+
+        textLayout.addView(label);
+        textLayout.addView(desc);
+
+        Switch switchView = new Switch(this);
+        switchView.setChecked(prefs.getBoolean(prefKey, false));
+        
+        // 强制把开关的颜色替换为 Monet 的强调色
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            android.content.res.ColorStateList thumbStateList = new android.content.res.ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{COLOR_ACCENT, Color.parseColor("#AAAAAA")}
+            );
+            android.content.res.ColorStateList trackStateList = new android.content.res.ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{Color.argb(100, Color.red(COLOR_ACCENT), Color.green(COLOR_ACCENT), Color.blue(COLOR_ACCENT)), Color.parseColor("#40000000")}
+            );
+            try {
+                switchView.setThumbTintList(thumbStateList);
+                switchView.setTrackTintList(trackStateList);
+            } catch (Throwable ignored) {}
+        }
+
+        switchView.setOnCheckedChangeListener((buttonView, checked) -> {
+            prefs.edit().putBoolean(prefKey, checked).apply();
+            try { Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml"); } catch (Exception ignored) {}
+            
+            // 如果修改的是 Monet 开关，立刻重启界面让颜色生效
+            if (forceRecreate) {
+                recreate();
+            }
+        });
+
+        row.addView(textLayout);
+        row.addView(switchView);
+        parent.addView(row);
     }
 
     private void runRootCommand(String cmd) {
@@ -154,97 +325,5 @@ public class MainActivity extends Activity {
                 process.waitFor();
             } catch (Exception ignored) {}
         }).start();
-    }
-
-    private void addCategoryTitle(LinearLayout parent, String titleText) {
-        TextView cat = new TextView(this);
-        cat.setText(titleText);
-        cat.setTextColor(Color.parseColor("#26D0CE"));
-        cat.setTextSize(15f);
-        cat.setTypeface(Typeface.DEFAULT_BOLD);
-        cat.setPadding(0, 30, 0, 10);
-        parent.addView(cat);
-    }
-
-    private void startAuroraAnimation() {
-        colorAnimator = ValueAnimator.ofFloat(0f, 1f);
-        colorAnimator.setDuration(6000);
-        colorAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        colorAnimator.setRepeatMode(ValueAnimator.REVERSE);
-        colorAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
-        colorAnimator.addUpdateListener(animation -> {
-            float fraction = animation.getAnimatedFraction();
-            int color1 = blendColors(Color.parseColor("#0F2027"), Color.parseColor("#2C5364"), fraction);
-            int color2 = blendColors(Color.parseColor("#203A43"), Color.parseColor("#0F2027"), fraction);
-            GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{color1, color2});
-            backgroundView.setBackground(bg);
-        });
-        colorAnimator.start();
-    }
-
-    private int blendColors(int color1, int color2, float ratio) {
-        float inverseRation = 1f - ratio;
-        float r = (Color.red(color1) * ratio) + (Color.red(color2) * inverseRation);
-        float g = (Color.green(color1) * ratio) + (Color.green(color2) * inverseRation);
-        float b = (Color.blue(color1) * ratio) + (Color.blue(color2) * inverseRation);
-        return Color.rgb((int) r, (int) g, (int) b);
-    }
-
-    private void addSwitch(LinearLayout parent, String labelText, final String prefKey, String descText) {
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(0, 15, 0, 15);
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        LinearLayout textLayout = new LinearLayout(this);
-        textLayout.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        textLayout.setLayoutParams(textParams);
-
-        TextView label = new TextView(this);
-        label.setText(labelText);
-        label.setTextColor(Color.WHITE);
-        label.setTextSize(16f);
-        label.setTypeface(Typeface.DEFAULT_BOLD);
-
-        TextView desc = new TextView(this);
-        desc.setText(descText);
-        desc.setTextColor(Color.parseColor("#80FFFFFF"));
-        desc.setTextSize(12f);
-        desc.setPadding(0, 5, 0, 0);
-
-        textLayout.addView(label);
-        textLayout.addView(desc);
-
-        Switch switchView = new Switch(this);
-        switchView.setChecked(prefs.getBoolean(prefKey, false));
-        
-        try {
-            switchView.setThumbTintList(new ColorStateList(
-                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{Color.parseColor("#26D0CE"), Color.parseColor("#E6FFFFFF")}));
-            switchView.setTrackTintList(new ColorStateList(
-                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#40FFFFFF")}));
-        } catch (Throwable ignored) {}
-
-        switchView.setOnCheckedChangeListener((buttonView, checked) -> {
-            prefs.edit().putBoolean(prefKey, checked).apply();
-            try { Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml"); } catch (Exception ignored) {}
-        });
-
-        row.addView(textLayout);
-        row.addView(switchView);
-        container.addView(row);
-        parent.addView(container);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (colorAnimator != null) colorAnimator.cancel();
     }
 }
