@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="xposed_scope">
-        <!-- 必须同时包含系统界面（美化）和系统框架（电池/动画） -->
-        <item>com.android.systemui</item>
         <item>android</item>
+        <item>com.android.systemui</item>
     </string-array>
 </resources>
