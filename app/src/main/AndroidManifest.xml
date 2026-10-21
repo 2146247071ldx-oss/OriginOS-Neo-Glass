@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="Sensor Shield"
+        android:label="Origin Cyber"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
         <meta-data
@@ -12,7 +12,7 @@
 
         <meta-data
             android:name="xposeddescription"
-            android:value="物理级摇一摇免疫：直接拦截底层传感器数据，专治各种开屏广告乱跳转。" />
+            android:value="OriginOS 专属：全局弹簧手感引擎 + 状态栏赛博弹幕跑马灯。" />
 
         <meta-data
             android:name="xposedminversion"
