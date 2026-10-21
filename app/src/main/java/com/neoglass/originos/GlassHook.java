@@ -1,12 +1,7 @@
 package com.neoglass.originos;
 
-import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.os.IBinder;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.animation.OvershootInterpolator;
+import android.view.WindowManager;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -16,80 +11,99 @@ import de.robv.android.xposed.XSharedPreferences;
 
 public class GlassHook implements IXposedHookLoadPackage {
 
-    private static final String TAG = "OriginEngine: ";
+    private XSharedPreferences prefs;
 
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-        // 排除自身
         if ("com.neoglass.originos".equals(lpparam.packageName)) return;
 
-        try {
-            XSharedPreferences prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
-            prefs.makeWorldReadable();
+        prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
+        prefs.makeWorldReadable();
 
-            // === 针对系统框架(android) 的底层 Hook ===
+        // 激活检测：标记文件
+        if ("android".equals(lpparam.packageName) || "com.android.systemui".equals(lpparam.packageName)) {
+            try {
+                Runtime.getRuntime().exec("su -c touch /data/local/tmp/origin_breaker_active");
+            } catch (Throwable ignored) {}
+        }
+
+        try {
+            hookAnimationScale(lpparam);
+
+            if (prefs.getBoolean("screen_snap", false)) {
+                hookScreenSnap(lpparam);
+            }
+
             if ("android".equals(lpparam.packageName)) {
+                if (prefs.getBoolean("thermal_spoof", false)) {
+                    String tempStr = prefs.getString("thermal_temp", "25.0");
+                    float fakeTemp = 25.0f;
+                    try { fakeTemp = Float.parseFloat(tempStr); } catch (Exception ignored) {}
+                    hookThermalSpoof(lpparam, fakeTemp);
+                }
                 if (prefs.getBoolean("limit_charge", false)) hookChargeLimit(lpparam);
                 if (prefs.getBoolean("wakelock_killer", false)) hookWakelock(lpparam);
             }
-
-            // === 针对系统界面(SystemUI) 的美化 Hook ===
-            if ("com.android.systemui".equals(lpparam.packageName)) {
-                if (prefs.getBoolean("spring_anim", false)) hookSpringAnimation(lpparam);
-                if (prefs.getBoolean("glass_notification", false)) hookNotificationGlass(lpparam);
-            }
-
         } catch (Throwable t) {
-            XposedBridge.log(TAG + "错误: " + t.getMessage());
+            XposedBridge.log("OriginBreaker: " + t.getMessage());
         }
     }
 
-    // ================= 美化模块 =================
-
-    // 1. 全局 Q 弹动画
-    private void hookSpringAnimation(LoadPackageParam lpparam) {
+    private void hookAnimationScale(LoadPackageParam lpparam) {
         try {
-            XposedHelpers.findAndHookMethod("android.view.animation.AnimationUtils", lpparam.classLoader, "loadInterpolator", 
-                    android.content.Context.class, int.class, new XC_MethodHook() {
+            String animScaleStr = prefs.getString("anim_scale", "1.0");
+            final float animScale = Float.parseFloat(animScaleStr);
+            if (animScale == 1.0f) return; 
+
+            XposedHelpers.findAndHookMethod("android.provider.Settings$Global", lpparam.classLoader, "getFloat", 
+                    android.content.ContentResolver.class, String.class, float.class, new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    Object result = param.getResult();
-                    if (result != null && result.getClass().getName().contains("LinearInterpolator")) {
-                        param.setResult(new OvershootInterpolator(1.2f));
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String settingName = (String) param.args[1];
+                    if ("window_animation_scale".equals(settingName) ||
+                        "transition_animation_scale".equals(settingName) ||
+                        "animator_duration_scale".equals(settingName)) {
+                        param.setResult(animScale);
                     }
                 }
             });
         } catch (Throwable ignored) {}
     }
 
-    // 2. 通知卡片毛玻璃化 (强行修改 SystemUI 通知堆栈的背景)
-    private void hookNotificationGlass(LoadPackageParam lpparam) {
+    private void hookScreenSnap(LoadPackageParam lpparam) {
         try {
-            // Hook 通知栏的根容器，强行刷上半透明的深色圆角背景
-            Class<?> stackScrollLayout = XposedHelpers.findClassIfExists(
-                "com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout", lpparam.classLoader);
-            
-            if (stackScrollLayout != null) {
-                XposedHelpers.findAndHookMethod(stackScrollLayout, "onAttachedToWindow", new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        ViewGroup view = (ViewGroup) param.thisObject;
-                        GradientDrawable glassBg = new GradientDrawable();
-                        glassBg.setColor(Color.parseColor("#B3101519")); // 70% 不透明的极夜黑
-                        glassBg.setCornerRadius(60f);
-                        
-                        // 强制替换背景，把原本纯色的背景变成圆角玻璃
-                        view.setBackground(glassBg);
-                    }
-                });
-                XposedBridge.log(TAG + "通知堆栈毛玻璃已应用");
-            }
-        } catch (Throwable t) {
-            XposedBridge.log(TAG + "通知美化失败(可能是类名被改): " + t.getMessage());
-        }
+            XposedHelpers.findAndHookMethod("android.view.Window", lpparam.classLoader, "addFlags", int.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    int flags = (int) param.args[0];
+                    param.args[0] = flags & ~WindowManager.LayoutParams.FLAG_SECURE;
+                }
+            });
+            XposedHelpers.findAndHookMethod("android.view.Window", lpparam.classLoader, "setFlags", int.class, int.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    int flags = (int) param.args[0];
+                    int mask = (int) param.args[1];
+                    param.args[0] = flags & ~WindowManager.LayoutParams.FLAG_SECURE;
+                    param.args[1] = mask & ~WindowManager.LayoutParams.FLAG_SECURE;
+                }
+            });
+        } catch (Throwable ignored) {}
     }
 
-    // ================= 电池模块 =================
+    private void hookThermalSpoof(LoadPackageParam lpparam, final float fakeTemp) {
+        try {
+            Class<?> thermalClass = XposedHelpers.findClassIfExists("com.android.server.power.ThermalManagerService", lpparam.classLoader);
+            if (thermalClass != null) {
+                XposedHelpers.findAndHookMethod(thermalClass, "getCurrentTemperature", new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        param.setResult(fakeTemp); 
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
+    }
 
     private void hookChargeLimit(LoadPackageParam lpparam) {
         try {
@@ -99,9 +113,7 @@ public class GlassHook implements IXposedHookLoadPackage {
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     int level = XposedHelpers.getIntField(param.thisObject, "mBatteryLevel");
                     if (level >= 80) {
-                        try {
-                            XposedHelpers.setIntField(param.thisObject, "mPlugType", 0); 
-                        } catch (Throwable ignored) {}
+                        try { XposedHelpers.setIntField(param.thisObject, "mPlugType", 0); } catch (Throwable ignored) {}
                     }
                 }
             });
@@ -117,7 +129,7 @@ public class GlassHook implements IXposedHookLoadPackage {
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     String packageName = (String) param.args[3];
                     if (packageName != null && !packageName.equals("android") && !packageName.contains("systemui")) {
-                        param.setResult(null); // 强行拦截流氓唤醒
+                        param.setResult(null); 
                     }
                 }
             });
