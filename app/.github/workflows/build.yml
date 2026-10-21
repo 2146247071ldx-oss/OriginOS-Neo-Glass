@@ -1,0 +1,43 @@
+
+name: Build OriginOS Neo Glass APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 下载源码
+        uses: actions/checkout@v5
+
+      - name: 安装 Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: 安装 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: 编译 APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: 保存 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OriginOS-Neo-Glass-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
