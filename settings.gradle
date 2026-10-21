@@ -10,7 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' } // 替换为更稳定的 JitPack 源
+        maven { url 'https://jitpack.io' } //
     }
 }
 rootProject.name = "OriginOS-Neo-Glass"
