@@ -3,7 +3,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="OriginOS Neo Glass"
+        android:label="NeoRefresh 满血高刷"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
         <meta-data
@@ -12,14 +12,16 @@
 
         <meta-data
             android:name="xposeddescription"
-            android:value="OriginOS Neo Glass 美化模块" />
+            android:value="iQOO 专属：打破系统锁帧，全局强制最高刷新率，支持一键重启 SystemUI。" />
 
         <meta-data
             android:name="xposedminversion"
             android:value="82" />
+
         <meta-data
-    android:name="xposedscope"
-    android:resource="@array/xposed_scope" />
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
