@@ -1,32 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-&lt;?xml version="1.0" encoding="utf-8"?&gt;
-&lt;manifest xmlns:android="http://schemas.android.com/apk/res/android"&gt;
-
-    &lt;application
+    <application
         android:allowBackup="false"
         android:label="OriginOS Neo Glass"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"&gt;
+        android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
-        &lt;meta-data
+        <meta-data
             android:name="xposedmodule"
-            android:value="true" /&gt;
+            android:value="true" />
 
-        &lt;meta-data
+        <meta-data
             android:name="xposeddescription"
-            android:value="OriginOS Neo Glass 美化模块" /&gt;
+            android:value="OriginOS Neo Glass 美化模块" />
 
-        &lt;meta-data
+        <meta-data
             android:name="xposedminversion"
-            android:value="82" /&gt;
+            android:value="82" />
 
-        &lt;activity
+        <activity
             android:name=".MainActivity"
-            android:exported="true"&gt;
-            &lt;intent-filter&gt;
-                &lt;action android:name="android.intent.action.MAIN" /&gt;
-                &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
-            &lt;/intent-filter&gt;
-        &lt;/activity&gt;
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-    &lt;/application&gt;
-&lt;/manifest&gt;
+    </application>
+</manifest>
