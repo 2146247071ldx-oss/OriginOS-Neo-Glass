@@ -2,6 +2,7 @@ package com.neoglass.originos;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -9,6 +10,8 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +20,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.DataOutputStream;
 
 public class MainActivity extends Activity {
 
@@ -79,16 +85,71 @@ public class MainActivity extends Activity {
         // 核心功能开关
         addSwitch(cardLayout, "强制全局最高刷新率", "max_refresh_rate", "打破 App 锁帧，全程满血运行");
 
+        // 一键重启 SystemUI 按钮
+        TextView restartBtn = new TextView(this);
+        restartBtn.setText("一键重启系统界面 (Soft Reboot)");
+        restartBtn.setTextColor(Color.WHITE);
+        restartBtn.setTextSize(16f);
+        restartBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        restartBtn.setGravity(Gravity.CENTER);
+        restartBtn.setPadding(40, 40, 40, 40);
+        
+        GradientDrawable btnDrawable = new GradientDrawable();
+        btnDrawable.setColor(Color.parseColor("#3326D0CE")); // 半透明青色
+        btnDrawable.setCornerRadius(40f);
+        btnDrawable.setStroke(2, Color.parseColor("#8026D0CE"));
+        restartBtn.setBackground(btnDrawable);
+        
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnParams.setMargins(0, 40, 0, 20);
+        restartBtn.setLayoutParams(btnParams);
+
+        restartBtn.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle("重启系统界面")
+                .setMessage("即将重启 SystemUI，屏幕会黑屏闪烁一下，用于让模块设置立刻生效。需要授予 Root 权限。")
+                .setPositiveButton("确定重启", (dialog, which) -> restartSystemUI())
+                .setNegativeButton("取消", null)
+                .show();
+        });
+        cardLayout.addView(restartBtn);
+
         TextView warn = new TextView(this);
-        warn.setText("⚠️ 提示：开启并重启系统界面后生效，部分省电模式可能会覆盖此设置。");
+        warn.setText("⚠️ 提示：开启高刷开关后，请务必点击上方按钮重启 SystemUI 以生效。");
         warn.setTextColor(Color.parseColor("#B3FFD700"));
         warn.setTextSize(12f);
         warn.setGravity(Gravity.CENTER);
-        warn.setPadding(0, 40, 0, 20);
+        warn.setPadding(0, 20, 0, 20);
         cardLayout.addView(warn);
 
         rootLayout.addView(cardLayout);
         setContentView(frameLayout);
+    }
+
+    // 执行 Root 命令重启 SystemUI
+    private void restartSystemUI() {
+        Toast.makeText(this, "正在重启 SystemUI...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                Process process = Runtime.getRuntime().exec("su");
+                DataOutputStream os = new DataOutputStream(process.getOutputStream());
+                // pkill 命令在 Android 上通常有效，系统会自动拉起 SystemUI
+                os.writeBytes("pkill -f com.android.systemui\n");
+                os.writeBytes("exit\n");
+                os.flush();
+                os.close();
+                process.waitFor();
+                
+                new Handler(Looper.getMainLooper()).post(() -> 
+                    Toast.makeText(MainActivity.this, "重启指令已发送", Toast.LENGTH_SHORT).show()
+                );
+            } catch (Exception e) {
+                new Handler(Looper.getMainLooper()).post(() -> 
+                    Toast.makeText(MainActivity.this, "Root 权限获取失败或被拒绝", Toast.LENGTH_LONG).show()
+                );
+            }
+        }).start();
     }
 
     private void startAuroraAnimation() {
