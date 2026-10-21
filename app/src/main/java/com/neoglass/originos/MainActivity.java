@@ -25,12 +25,18 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 存储开关状态
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
 
-        // 整体深色背景
         ScrollView scrollView = new ScrollView(this);
-        scrollView.setBackgroundColor(Color.parseColor("#121315"));
+        
+        // ==========================================
+        // 这里就是你要找的背景代码！我写成了深邃的极光渐变
+        // ==========================================
+        GradientDrawable bgGradient = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR, 
+                new int[]{Color.parseColor("#0F2027"), Color.parseColor("#203A43"), Color.parseColor("#2C5364")}
+        );
+        scrollView.setBackground(bgGradient);
         
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
@@ -44,13 +50,12 @@ public class MainActivity extends Activity {
         cardLayout.setPadding(60, 60, 60, 60);
         cardLayout.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        // 模拟液态玻璃的 GradientDrawable
         GradientDrawable glassDrawable = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.parseColor("#33FFFFFF"), Color.parseColor("#1AFFFFFF")} // 半透明白色渐变
+                new int[]{Color.parseColor("#33FFFFFF"), Color.parseColor("#1AFFFFFF")}
         );
-        glassDrawable.setCornerRadius(60f); // 圆角
-        glassDrawable.setStroke(2, Color.parseColor("#40FFFFFF")); // 微光边框
+        glassDrawable.setCornerRadius(60f);
+        glassDrawable.setStroke(2, Color.parseColor("#40FFFFFF"));
         cardLayout.setBackground(glassDrawable);
         
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
@@ -66,7 +71,7 @@ public class MainActivity extends Activity {
         title.setPadding(0, 0, 0, 40);
         cardLayout.addView(title);
 
-        // 副标题
+        // 副标题（已修复之前的 \n 问题）
         TextView subtitle = new TextView(this);
         subtitle.setText("OriginOS 6 · 半透明玻璃风\n时钟 · 通知 · 控制中心 · 动画");
         subtitle.setTextColor(Color.parseColor("#B3FFFFFF"));
@@ -83,13 +88,12 @@ public class MainActivity extends Activity {
 
         // 底部作者链接
         TextView author = new TextView(this);
-        author.setText("开发预览版 | 酷安: @林东旭"); // 这里你可以改成你的酷安名字
-        author.setTextColor(Color.parseColor("#8099B2")); // 亮蓝色文字
+        author.setText("开发预览版 | 酷安: @林东旭"); 
+        author.setTextColor(Color.parseColor("#8099B2")); 
         author.setTextSize(14f);
         author.setGravity(Gravity.CENTER);
         author.setPadding(0, 60, 0, 20);
         
-        // 点击跳转酷安
         author.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -107,7 +111,6 @@ public class MainActivity extends Activity {
         setContentView(scrollView);
     }
 
-    // 辅助方法：快速生成带开关的行
     private void addSwitch(LinearLayout parent, String labelText, final String prefKey) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -123,11 +126,9 @@ public class MainActivity extends Activity {
         label.setLayoutParams(labelParams);
 
         Switch switchView = new Switch(this);
-        // 读取保存的状态
         boolean isChecked = prefs.getBoolean(prefKey, false);
         switchView.setChecked(isChecked);
         
-        // 监听开关变化并保存
         switchView.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
