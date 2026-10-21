@@ -1,5 +1,16 @@
 package com.neoglass.originos;
 
+import android.animation.TimeInterpolator;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.OvershootInterpolator;
+import android.widget.TextView;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -9,50 +20,82 @@ import de.robv.android.xposed.XSharedPreferences;
 
 public class GlassHook implements IXposedHookLoadPackage {
 
-    private static final String TAG = "SensorShield: ";
-
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-        // 排除自身和系统核心，防止转屏失效
-        if ("com.neoglass.originos".equals(lpparam.packageName) || 
-            "android".equals(lpparam.packageName)) {
+        // 只针对系统界面
+        if (!"com.android.systemui".equals(lpparam.packageName)) {
             return;
         }
 
         try {
             XSharedPreferences prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
             prefs.makeWorldReadable();
-            boolean shieldOn = prefs.getBoolean("sensor_shield", false);
+            
+            boolean springOn = prefs.getBoolean("spring_anim", false);
+            boolean tickerOn = prefs.getBoolean("ticker_on", false);
+            String tickerText = prefs.getString("ticker_text", "Origin Cyber");
 
-            if (shieldOn) {
-                hookSensorEvent(lpparam);
+            if (springOn) {
+                hookSpringAnimation(lpparam);
+            }
+            if (tickerOn && !TextUtils.isEmpty(tickerText)) {
+                hookTickerText(lpparam, tickerText);
             }
 
         } catch (Throwable t) {
-            XposedBridge.log(TAG + "错误: " + t.getMessage());
+            XposedBridge.log("Origin Cyber 错误: " + t.getMessage());
         }
     }
 
-    private void hookSensorEvent(LoadPackageParam lpparam) {
+    // 1. 全局 Q 弹弹簧动画
+    private void hookSpringAnimation(LoadPackageParam lpparam) {
         try {
-            // 寻找底层的传感器事件队列
-            Class<?> sensorQueueClass = XposedHelpers.findClassIfExists("android.hardware.SystemSensorManager$SensorEventQueue", lpparam.classLoader);
-            if (sensorQueueClass != null) {
-                XposedHelpers.findAndHookMethod(sensorQueueClass, "dispatchSensorEvent", 
-                        int.class, float[].class, int.class, long.class, 
-                        new XC_MethodHook() {
-                    @Override
-                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                        float[] values = (float[]) param.args[1];
-                        // 只要数据不为空，就直接把数值抹平（变成 0）
-                        if (values != null) {
-                            for (int i = 0; i < values.length; i++) {
-                                values[i] = 0f;
-                            }
-                        }
+            // 替换系统的默认插值器，强行改成带有回弹效果的 OvershootInterpolator
+            XposedHelpers.findAndHookMethod("android.view.animation.AnimationUtils", lpparam.classLoader, "loadInterpolator", 
+                    android.content.Context.class, int.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    // 拦截标准的线性/减速插值器，替换成弹簧
+                    Object result = param.getResult();
+                    if (result != null && result.getClass().getName().contains("LinearInterpolator")) {
+                        param.setResult(new OvershootInterpolator(1.2f));
                     }
-                });
-            }
+                }
+            });
+            XposedBridge.log("Origin Cyber: 弹簧引擎已注入");
         } catch (Throwable ignored) {}
+    }
+
+    // 2. 状态栏赛博弹幕
+    private void hookTickerText(LoadPackageParam lpparam, String text) {
+        try {
+            // 寻找状态栏的根视图
+            XposedHelpers.findAndHookMethod("com.android.systemui.statusbar.phone.PhoneStatusBarView", lpparam.classLoader, "onAttachedToWindow", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    ViewGroup statusBarView = (ViewGroup) param.thisObject;
+                    
+                    // 动态创建一个跑马灯 TextView
+                    TextView ticker = new TextView(statusBarView.getContext());
+                    ticker.setText(text);
+                    ticker.setTextColor(Color.parseColor("#26D0CE")); // 赛博青色
+                    ticker.setTextSize(12f);
+                    ticker.setTypeface(Typeface.DEFAULT_BOLD);
+                    ticker.setSingleLine(true);
+                    ticker.setEllipsize(TextUtils.TruncateAt.MARQUEE); // 设为滚动
+                    ticker.setMarqueeRepeatLimit(-1); // 无限循环
+                    ticker.setSelected(true); // 激活滚动
+                    
+                    // 把跑马灯加到状态栏最左侧
+                    ViewGroup.LayoutParams lp = new ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                    statusBarView.addView(ticker, 0, lp);
+                    
+                    XposedBridge.log("Origin Cyber: 赛博弹幕已插入状态栏");
+                }
+            });
+        } catch (Throwable t) {
+            XposedBridge.log("Origin Cyber: 弹幕注入失败 -> " + t.getMessage());
+        }
     }
 }
