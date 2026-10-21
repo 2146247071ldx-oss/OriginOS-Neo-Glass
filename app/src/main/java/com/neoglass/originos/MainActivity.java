@@ -131,7 +131,7 @@ public class MainActivity extends Activity {
 
         // 酷安链接
         TextView author = new TextView(this);
-        author.setText("极客开发 | 酷安: @林东旭"); 
+        author.setText("极客开发 | 酷安: @惩煦"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
