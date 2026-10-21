@@ -2,6 +2,7 @@ package com.neoglass.originos;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -16,6 +17,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import java.io.DataOutputStream;
 
 public class MainActivity extends Activity {
 
@@ -42,7 +46,7 @@ public class MainActivity extends Activity {
         ScrollView scrollView = new ScrollView(this);
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setPadding(40, 60, 40, 60);
+        rootLayout.setPadding(40, 80, 40, 80);
         rootLayout.setGravity(Gravity.CENTER);
         scrollView.addView(rootLayout, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -63,40 +67,69 @@ public class MainActivity extends Activity {
         cardLayout.setElevation(30f);
 
         TextView title = new TextView(this);
-        title.setText("iQOO 充电优化");
+        title.setText("OriginOS 极客引擎");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(30f);
+        title.setTextSize(28f);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, 10);
         cardLayout.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("电池保养 · 拒绝发烫");
+        subtitle.setText("全面美化 · 底层控制");
         subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
         subtitle.setTextSize(14f);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 0, 0, 50);
+        subtitle.setPadding(0, 0, 0, 40);
         cardLayout.addView(subtitle);
 
-        // 核心功能
-        addSwitch(cardLayout, "限制充电上限 (80%)", "limit_charge", "达到80%系统视为已满，减缓电池老化");
-        addSwitch(cardLayout, "亮屏强制慢充", "screen_slow_charge", "亮屏使用时断开超级快充，杜绝发热");
+        // === 美化分类 ===
+        addCategoryTitle(cardLayout, "✨ 系统美化");
+        addSwitch(cardLayout, "全局 Q 弹动画", "spring_anim", "替换底层插值器，带来果冻般跟手感");
+        addSwitch(cardLayout, "通知卡片极光化", "glass_notification", "强行修改通知面板背景和圆角，模拟毛玻璃");
 
-        TextView warn = new TextView(this);
-        warn.setText("⚠️ 需在 LSPosed 勾选“系统框架(android)”并重启手机");
-        warn.setTextColor(Color.parseColor("#B3FFD700"));
-        warn.setTextSize(12f);
-        warn.setGravity(Gravity.CENTER);
-        warn.setPadding(0, 30, 0, 0);
-        cardLayout.addView(warn);
+        // === 电池分类 ===
+        addCategoryTitle(cardLayout, "🔋 电池保护");
+        addSwitch(cardLayout, "限制充电上限 (80%)", "limit_charge", "达到80%系统视为已满，减缓电池老化");
+        addSwitch(cardLayout, "息屏断网休眠 (Wakelock杀手)", "wakelock_killer", "息屏后强制没收后台流氓唤醒锁，极速省电");
+
+        // 一键崩溃重启系统界面按钮（UI美化测试用）
+        TextView restartBtn = new TextView(this);
+        restartBtn.setText("重启界面 / 框架 (双模)");
+        restartBtn.setTextColor(Color.WHITE);
+        restartBtn.setTextSize(15f);
+        restartBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        restartBtn.setGravity(Gravity.CENTER);
+        restartBtn.setPadding(40, 40, 40, 40);
+        
+        GradientDrawable btnDrawable = new GradientDrawable();
+        btnDrawable.setColor(Color.parseColor("#33FF9800")); 
+        btnDrawable.setCornerRadius(40f);
+        btnDrawable.setStroke(2, Color.parseColor("#80FF9800"));
+        restartBtn.setBackground(btnDrawable);
+        
+        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnParams.setMargins(0, 40, 0, 20);
+        restartBtn.setLayoutParams(btnParams);
+
+        restartBtn.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle("选择重启方式")
+                .setMessage("【系统界面】：黑屏1秒，测试美化（跑马灯/动画）。\n【系统框架】：黑屏5秒，测试底层（电池/唤醒）。")
+                .setPositiveButton("仅重启系统界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
+                .setNeutralButton("重启系统框架", (dialog, which) -> runRootCommand("killall system_server"))
+                .setNegativeButton("取消", null)
+                .show();
+        });
+        cardLayout.addView(restartBtn);
 
         TextView author = new TextView(this);
         author.setText("酷安: @惩煦"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
-        author.setPadding(0, 40, 0, 10);
+        author.setPadding(0, 30, 0, 10);
         author.setOnClickListener(v -> {
             try {
                 startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.coolapk.com/u/39927079")));
@@ -106,6 +139,31 @@ public class MainActivity extends Activity {
 
         rootLayout.addView(cardLayout);
         setContentView(frameLayout);
+    }
+
+    private void runRootCommand(String cmd) {
+        Toast.makeText(this, "正在执行...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                Process process = Runtime.getRuntime().exec("su");
+                DataOutputStream os = new DataOutputStream(process.getOutputStream());
+                os.writeBytes(cmd + "\n"); 
+                os.writeBytes("exit\n");
+                os.flush();
+                os.close();
+                process.waitFor();
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    private void addCategoryTitle(LinearLayout parent, String titleText) {
+        TextView cat = new TextView(this);
+        cat.setText(titleText);
+        cat.setTextColor(Color.parseColor("#26D0CE"));
+        cat.setTextSize(15f);
+        cat.setTypeface(Typeface.DEFAULT_BOLD);
+        cat.setPadding(0, 30, 0, 10);
+        parent.addView(cat);
     }
 
     private void startAuroraAnimation() {
@@ -135,7 +193,7 @@ public class MainActivity extends Activity {
     private void addSwitch(LinearLayout parent, String labelText, final String prefKey, String descText) {
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(0, 20, 0, 20);
+        container.setPadding(0, 15, 0, 15);
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -156,6 +214,7 @@ public class MainActivity extends Activity {
         desc.setText(descText);
         desc.setTextColor(Color.parseColor("#80FFFFFF"));
         desc.setTextSize(12f);
+        desc.setPadding(0, 5, 0, 0);
 
         textLayout.addView(label);
         textLayout.addView(desc);
