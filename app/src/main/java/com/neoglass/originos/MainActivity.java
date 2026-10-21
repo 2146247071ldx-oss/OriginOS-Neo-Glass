@@ -65,8 +65,9 @@ public class MainActivity extends Activity {
         cardLayout.setBackground(glassDrawable);
         cardLayout.setElevation(30f);
 
+        // ========= 修改了这里的新名字 =========
         TextView title = new TextView(this);
-        title.setText("NEO GLASS");
+        title.setText("NeoRefresh");
         title.setTextColor(Color.WHITE);
         title.setTextSize(36f);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -75,7 +76,7 @@ public class MainActivity extends Activity {
         cardLayout.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("解除系统限制 · 满血高刷新率引擎");
+        subtitle.setText("满血高刷引擎 · 极客专属");
         subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
         subtitle.setTextSize(14f);
         subtitle.setGravity(Gravity.CENTER);
@@ -95,7 +96,7 @@ public class MainActivity extends Activity {
         restartBtn.setPadding(40, 40, 40, 40);
         
         GradientDrawable btnDrawable = new GradientDrawable();
-        btnDrawable.setColor(Color.parseColor("#3326D0CE")); // 半透明青色
+        btnDrawable.setColor(Color.parseColor("#3326D0CE")); 
         btnDrawable.setCornerRadius(40f);
         btnDrawable.setStroke(2, Color.parseColor("#8026D0CE"));
         restartBtn.setBackground(btnDrawable);
@@ -115,26 +116,30 @@ public class MainActivity extends Activity {
         });
         cardLayout.addView(restartBtn);
 
-        TextView warn = new TextView(this);
-        warn.setText("⚠️ 提示：开启高刷开关后，请务必点击上方按钮重启 SystemUI 以生效。");
-        warn.setTextColor(Color.parseColor("#B3FFD700"));
-        warn.setTextSize(12f);
-        warn.setGravity(Gravity.CENTER);
-        warn.setPadding(0, 20, 0, 20);
-        cardLayout.addView(warn);
+        // 酷安作者链接
+        TextView author = new TextView(this);
+        author.setText("极客开发 | 酷安: @林东旭"); 
+        author.setTextColor(Color.parseColor("#80FFFFFF")); 
+        author.setTextSize(13f);
+        author.setGravity(Gravity.CENTER);
+        author.setPadding(0, 70, 0, 10);
+        author.setOnClickListener(v -> {
+            try {
+                startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.coolapk.com/u/39927079")));
+            } catch (Exception ignored) {}
+        });
+        cardLayout.addView(author);
 
         rootLayout.addView(cardLayout);
         setContentView(frameLayout);
     }
 
-    // 执行 Root 命令重启 SystemUI
     private void restartSystemUI() {
         Toast.makeText(this, "正在重启 SystemUI...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
                 Process process = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(process.getOutputStream());
-                // pkill 命令在 Android 上通常有效，系统会自动拉起 SystemUI
                 os.writeBytes("pkill -f com.android.systemui\n");
                 os.writeBytes("exit\n");
                 os.flush();
