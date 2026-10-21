@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.11.1'
 
       - name: 编译 APK
-        run: gradle --no-daemon --stacktrace assembleDebug
+        run: gradle --no-daemon --stacktrace --info assembleDebug
 
       - name: 保存 APK
         uses: actions/upload-artifact@v4
