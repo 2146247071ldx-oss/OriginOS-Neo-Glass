@@ -9,9 +9,12 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -27,10 +30,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 修复闪退：使用 MODE_PRIVATE
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
-        
-        // 用 Root 强行把配置文件改为全局可读，让 LSPosed 能读到
         try {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
         ScrollView scrollView = new ScrollView(this);
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setPadding(60, 150, 60, 150);
+        rootLayout.setPadding(50, 100, 50, 100);
         rootLayout.setGravity(Gravity.CENTER);
         scrollView.addView(rootLayout, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
 
         LinearLayout cardLayout = new LinearLayout(this);
         cardLayout.setOrientation(LinearLayout.VERTICAL);
-        cardLayout.setPadding(60, 70, 60, 70);
+        cardLayout.setPadding(50, 60, 50, 60);
         cardLayout.setGravity(Gravity.CENTER_HORIZONTAL);
 
         GradientDrawable glassDrawable = new GradientDrawable(
@@ -66,40 +66,76 @@ public class MainActivity extends Activity {
         cardLayout.setElevation(30f);
 
         TextView title = new TextView(this);
-        title.setText("Sensor Shield");
+        title.setText("Origin Cyber");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(34f);
+        title.setTextSize(32f);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 20);
+        title.setPadding(0, 0, 0, 10);
         cardLayout.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("物理级摇一摇防跳转引擎");
+        subtitle.setText("手感引擎 · 赛博弹幕");
         subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
         subtitle.setTextSize(14f);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 0, 0, 60);
+        subtitle.setPadding(0, 0, 0, 50);
         cardLayout.addView(subtitle);
 
-        // 核心功能开关
-        addSwitch(cardLayout, "拦截“摇一摇”广告", "sensor_shield", "断掉 App 的加速度传感器，随便摇绝不跳转");
+        // 弹簧动画开关
+        addSwitch(cardLayout, "全局 Q 弹动画", "spring_anim", "替换底层插值器，带来果冻般跟手感");
+
+        // 弹幕输入框
+        TextView label = new TextView(this);
+        label.setText("状态栏赛博弹幕文字:");
+        label.setTextColor(Color.WHITE);
+        label.setTextSize(16f);
+        label.setTypeface(Typeface.DEFAULT_BOLD);
+        label.setPadding(0, 30, 0, 10);
+        cardLayout.addView(label);
+
+        EditText input = new EditText(this);
+        input.setTextColor(Color.WHITE);
+        input.setHintTextColor(Color.parseColor("#80FFFFFF"));
+        input.setHint("输入你想展示的文字...");
+        input.setText(prefs.getString("ticker_text", "Origin Cyber 极客专属"));
+        
+        // 输入框的毛玻璃背景
+        GradientDrawable inputBg = new GradientDrawable();
+        inputBg.setColor(Color.parseColor("#26FFFFFF"));
+        inputBg.setCornerRadius(20f);
+        input.setBackground(inputBg);
+        input.setPadding(30, 20, 30, 20);
+        cardLayout.addView(input);
+
+        // 监听文字改变并保存
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                prefs.edit().putString("ticker_text", s.toString()).apply();
+                try { Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml"); } catch (Exception ignored) {}
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        // 跑马灯开关
+        addSwitch(cardLayout, "状态栏跑马灯", "ticker_on", "将文字强行插入状态栏左侧滚动显示");
 
         TextView warn = new TextView(this);
-        warn.setText("⚠️ 提示：需在 LSPosed 中勾选目标 App。若体感游戏无法操作，请关闭此开关。");
+        warn.setText("⚠️ 需在 LSPosed 中勾选“系统界面”并重启");
         warn.setTextColor(Color.parseColor("#B3FFD700"));
         warn.setTextSize(12f);
         warn.setGravity(Gravity.CENTER);
-        warn.setPadding(0, 40, 0, 20);
+        warn.setPadding(0, 30, 0, 0);
         cardLayout.addView(warn);
 
-        // 酷安作者链接
+        // 酷安链接
         TextView author = new TextView(this);
-        author.setText("极客开发 | 酷安: @惩煦"); 
+        author.setText("极客开发 | 酷安: @林东旭"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
-        author.setPadding(0, 70, 0, 10);
+        author.setPadding(0, 40, 0, 10);
         author.setOnClickListener(v -> {
             try {
                 startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.coolapk.com/u/39927079")));
@@ -117,7 +153,6 @@ public class MainActivity extends Activity {
         colorAnimator.setRepeatCount(ValueAnimator.INFINITE);
         colorAnimator.setRepeatMode(ValueAnimator.REVERSE);
         colorAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
-
         colorAnimator.addUpdateListener(animation -> {
             float fraction = animation.getAnimatedFraction();
             int color1 = blendColors(Color.parseColor("#0F2027"), Color.parseColor("#2C5364"), fraction);
@@ -165,28 +200,20 @@ public class MainActivity extends Activity {
         textLayout.addView(desc);
 
         Switch switchView = new Switch(this);
-        boolean isChecked = prefs.getBoolean(prefKey, false);
-        switchView.setChecked(isChecked);
-
-        ColorStateList thumbStateList = new ColorStateList(
-                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{Color.parseColor("#26D0CE"), Color.parseColor("#80FFFFFF")}
-        );
-        ColorStateList trackStateList = new ColorStateList(
-                new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#26FFFFFF")}
-        );
+        switchView.setChecked(prefs.getBoolean(prefKey, false));
         
         try {
-            switchView.setThumbTintList(thumbStateList);
-            switchView.setTrackTintList(trackStateList);
+            switchView.setThumbTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{Color.parseColor("#26D0CE"), Color.parseColor("#80FFFFFF")}));
+            switchView.setTrackTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#26FFFFFF")}));
         } catch (Throwable ignored) {}
 
         switchView.setOnCheckedChangeListener((buttonView, checked) -> {
             prefs.edit().putBoolean(prefKey, checked).apply();
-            try {
-                Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
-            } catch (Exception ignored) {}
+            try { Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml"); } catch (Exception ignored) {}
         });
 
         row.addView(textLayout);
