@@ -1,7 +1,12 @@
 package com.neoglass.originos;
 
-import android.content.Intent;
-import android.os.PowerManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
+import android.os.IBinder;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.OvershootInterpolator;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -11,26 +16,27 @@ import de.robv.android.xposed.XSharedPreferences;
 
 public class GlassHook implements IXposedHookLoadPackage {
 
-    private static final String TAG = "iQOOCharge: ";
+    private static final String TAG = "OriginEngine: ";
 
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-        // 我们必须 Hook 系统框架 android 进程，因为 BatteryService 都在里面
-        if (!"android".equals(lpparam.packageName)) {
-            return;
-        }
+        // 排除自身
+        if ("com.neoglass.originos".equals(lpparam.packageName)) return;
 
         try {
             XSharedPreferences prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
             prefs.makeWorldReadable();
-            boolean limitCharge = prefs.getBoolean("limit_charge", false);
-            boolean screenSlow = prefs.getBoolean("screen_slow_charge", false);
 
-            if (limitCharge) {
-                hookChargeLimit(lpparam);
+            // === 针对系统框架(android) 的底层 Hook ===
+            if ("android".equals(lpparam.packageName)) {
+                if (prefs.getBoolean("limit_charge", false)) hookChargeLimit(lpparam);
+                if (prefs.getBoolean("wakelock_killer", false)) hookWakelock(lpparam);
             }
-            if (screenSlow) {
-                hookScreenCharge(lpparam);
+
+            // === 针对系统界面(SystemUI) 的美化 Hook ===
+            if ("com.android.systemui".equals(lpparam.packageName)) {
+                if (prefs.getBoolean("spring_anim", false)) hookSpringAnimation(lpparam);
+                if (prefs.getBoolean("glass_notification", false)) hookNotificationGlass(lpparam);
             }
 
         } catch (Throwable t) {
@@ -38,52 +44,83 @@ public class GlassHook implements IXposedHookLoadPackage {
         }
     }
 
-    // 1. 限制充电上限 (80%停充)
+    // ================= 美化模块 =================
+
+    // 1. 全局 Q 弹动画
+    private void hookSpringAnimation(LoadPackageParam lpparam) {
+        try {
+            XposedHelpers.findAndHookMethod("android.view.animation.AnimationUtils", lpparam.classLoader, "loadInterpolator", 
+                    android.content.Context.class, int.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    Object result = param.getResult();
+                    if (result != null && result.getClass().getName().contains("LinearInterpolator")) {
+                        param.setResult(new OvershootInterpolator(1.2f));
+                    }
+                }
+            });
+        } catch (Throwable ignored) {}
+    }
+
+    // 2. 通知卡片毛玻璃化 (强行修改 SystemUI 通知堆栈的背景)
+    private void hookNotificationGlass(LoadPackageParam lpparam) {
+        try {
+            // Hook 通知栏的根容器，强行刷上半透明的深色圆角背景
+            Class<?> stackScrollLayout = XposedHelpers.findClassIfExists(
+                "com.android.systemui.statusbar.notification.stack.NotificationStackScrollLayout", lpparam.classLoader);
+            
+            if (stackScrollLayout != null) {
+                XposedHelpers.findAndHookMethod(stackScrollLayout, "onAttachedToWindow", new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        ViewGroup view = (ViewGroup) param.thisObject;
+                        GradientDrawable glassBg = new GradientDrawable();
+                        glassBg.setColor(Color.parseColor("#B3101519")); // 70% 不透明的极夜黑
+                        glassBg.setCornerRadius(60f);
+                        
+                        // 强制替换背景，把原本纯色的背景变成圆角玻璃
+                        view.setBackground(glassBg);
+                    }
+                });
+                XposedBridge.log(TAG + "通知堆栈毛玻璃已应用");
+            }
+        } catch (Throwable t) {
+            XposedBridge.log(TAG + "通知美化失败(可能是类名被改): " + t.getMessage());
+        }
+    }
+
+    // ================= 电池模块 =================
+
     private void hookChargeLimit(LoadPackageParam lpparam) {
         try {
-            // 寻找系统电量服务
             Class<?> batteryService = XposedHelpers.findClass("com.android.server.BatteryService", lpparam.classLoader);
-            
-            // Hook 系统更新电量状态的逻辑
             XposedHelpers.findAndHookMethod(batteryService, "processValuesLocked", boolean.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    // 暴力反射获取当前电量
                     int level = XposedHelpers.getIntField(param.thisObject, "mBatteryLevel");
-                    
                     if (level >= 80) {
-                        // 如果电量到了80，强行把充电状态改成“已充满”
-                        // 注意：不同底层 mPlugType 名字可能不同，这里尝试强行修改
                         try {
-                            XposedHelpers.setIntField(param.thisObject, "mPlugType", 0); // 0 通常代表 BATTERY_PLUGGED_AC_OFF/不充电
-                            XposedHelpers.setBooleanField(param.thisObject, "mBatteryLevelLow", false);
+                            XposedHelpers.setIntField(param.thisObject, "mPlugType", 0); 
                         } catch (Throwable ignored) {}
                     }
                 }
             });
-            XposedBridge.log(TAG + "已注入 80% 限充逻辑");
-        } catch (Throwable t) {
-            XposedBridge.log(TAG + "Hook 充电限制失败: " + t.getMessage());
-        }
+        } catch (Throwable ignored) {}
     }
 
-    // 2. 亮屏强制慢充
-    private void hookScreenCharge(LoadPackageParam lpparam) {
+    private void hookWakelock(LoadPackageParam lpparam) {
         try {
-            // 寻找 vivo 定制的电源管理服务 (如果有的话) 或 标准 PowerManager
-            Class<?> powerManager = XposedHelpers.findClass("com.android.server.power.PowerManagerService", lpparam.classLoader);
-            
-            // Hook 息屏/亮屏的触发方法
-            XposedHelpers.findAndHookMethod(powerManager, "wakeUpInternal", long.class, String.class, int.class, String.class, new XC_MethodHook() {
+            Class<?> powerManagerService = XposedHelpers.findClass("com.android.server.power.PowerManagerService", lpparam.classLoader);
+            XposedHelpers.findAndHookMethod(powerManagerService, "acquireWakeLockInternal", 
+                    IBinder.class, int.class, String.class, String.class, android.os.WorkSource.class, String.class, int.class, int.class, new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    // 手机亮屏时，强行通知底层切断快充协议（通过修改电池状态标志位）
-                    // 这个方法很难直接调用硬件，但我们可以 Hook 本地的快充类。
-                    // 由于 vivo 底层混淆严重，这里我们通过屏蔽充电速度上报来实现“伪慢充”欺骗系统。
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String packageName = (String) param.args[3];
+                    if (packageName != null && !packageName.equals("android") && !packageName.contains("systemui")) {
+                        param.setResult(null); // 强行拦截流氓唤醒
+                    }
                 }
             });
-        } catch (Throwable t) {
-            XposedBridge.log(TAG + "Hook 屏幕充电失败: " + t.getMessage());
-        }
+        } catch (Throwable ignored) {}
     }
 }
