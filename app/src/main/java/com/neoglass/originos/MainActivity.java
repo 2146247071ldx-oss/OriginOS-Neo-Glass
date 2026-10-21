@@ -2,7 +2,6 @@ package com.neoglass.originos;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -10,19 +9,13 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import java.io.DataOutputStream;
 
 public class MainActivity extends Activity {
 
@@ -33,7 +26,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_WORLD_READABLE);
+        
+        // 修复闪退：使用 MODE_PRIVATE
+        prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
+        
+        // 用 Root 强行把配置文件改为全局可读，让 LSPosed 能读到
+        try {
+            Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
+        } catch (Exception ignored) {}
 
         android.widget.FrameLayout frameLayout = new android.widget.FrameLayout(this);
 
@@ -65,18 +65,17 @@ public class MainActivity extends Activity {
         cardLayout.setBackground(glassDrawable);
         cardLayout.setElevation(30f);
 
-        // ========= 修改了这里的新名字 =========
         TextView title = new TextView(this);
-        title.setText("NeoRefresh");
+        title.setText("Sensor Shield");
         title.setTextColor(Color.WHITE);
-        title.setTextSize(36f);
+        title.setTextSize(34f);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setGravity(Gravity.CENTER);
         title.setPadding(0, 0, 0, 20);
         cardLayout.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("满血高刷引擎 · 极客专属");
+        subtitle.setText("物理级摇一摇防跳转引擎");
         subtitle.setTextColor(Color.parseColor("#E6FFFFFF"));
         subtitle.setTextSize(14f);
         subtitle.setGravity(Gravity.CENTER);
@@ -84,41 +83,19 @@ public class MainActivity extends Activity {
         cardLayout.addView(subtitle);
 
         // 核心功能开关
-        addSwitch(cardLayout, "强制全局最高刷新率", "max_refresh_rate", "打破 App 锁帧，全程满血运行");
+        addSwitch(cardLayout, "拦截“摇一摇”广告", "sensor_shield", "断掉 App 的加速度传感器，随便摇绝不跳转");
 
-        // 一键重启 SystemUI 按钮
-        TextView restartBtn = new TextView(this);
-        restartBtn.setText("一键重启系统界面 (Soft Reboot)");
-        restartBtn.setTextColor(Color.WHITE);
-        restartBtn.setTextSize(16f);
-        restartBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        restartBtn.setGravity(Gravity.CENTER);
-        restartBtn.setPadding(40, 40, 40, 40);
-        
-        GradientDrawable btnDrawable = new GradientDrawable();
-        btnDrawable.setColor(Color.parseColor("#3326D0CE")); 
-        btnDrawable.setCornerRadius(40f);
-        btnDrawable.setStroke(2, Color.parseColor("#8026D0CE"));
-        restartBtn.setBackground(btnDrawable);
-        
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnParams.setMargins(0, 40, 0, 20);
-        restartBtn.setLayoutParams(btnParams);
-
-        restartBtn.setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                .setTitle("重启系统界面")
-                .setMessage("即将重启 SystemUI，屏幕会黑屏闪烁一下，用于让模块设置立刻生效。需要授予 Root 权限。")
-                .setPositiveButton("确定重启", (dialog, which) -> restartSystemUI())
-                .setNegativeButton("取消", null)
-                .show();
-        });
-        cardLayout.addView(restartBtn);
+        TextView warn = new TextView(this);
+        warn.setText("⚠️ 提示：需在 LSPosed 中勾选目标 App。若体感游戏无法操作，请关闭此开关。");
+        warn.setTextColor(Color.parseColor("#B3FFD700"));
+        warn.setTextSize(12f);
+        warn.setGravity(Gravity.CENTER);
+        warn.setPadding(0, 40, 0, 20);
+        cardLayout.addView(warn);
 
         // 酷安作者链接
         TextView author = new TextView(this);
-        author.setText("极客开发 | 酷安: @林东旭"); 
+        author.setText("极客开发 | 酷安: @惩煦"); 
         author.setTextColor(Color.parseColor("#80FFFFFF")); 
         author.setTextSize(13f);
         author.setGravity(Gravity.CENTER);
@@ -132,29 +109,6 @@ public class MainActivity extends Activity {
 
         rootLayout.addView(cardLayout);
         setContentView(frameLayout);
-    }
-
-    private void restartSystemUI() {
-        Toast.makeText(this, "正在重启 SystemUI...", Toast.LENGTH_SHORT).show();
-        new Thread(() -> {
-            try {
-                Process process = Runtime.getRuntime().exec("su");
-                DataOutputStream os = new DataOutputStream(process.getOutputStream());
-                os.writeBytes("pkill -f com.android.systemui\n");
-                os.writeBytes("exit\n");
-                os.flush();
-                os.close();
-                process.waitFor();
-                
-                new Handler(Looper.getMainLooper()).post(() -> 
-                    Toast.makeText(MainActivity.this, "重启指令已发送", Toast.LENGTH_SHORT).show()
-                );
-            } catch (Exception e) {
-                new Handler(Looper.getMainLooper()).post(() -> 
-                    Toast.makeText(MainActivity.this, "Root 权限获取失败或被拒绝", Toast.LENGTH_LONG).show()
-                );
-            }
-        }).start();
     }
 
     private void startAuroraAnimation() {
@@ -222,12 +176,18 @@ public class MainActivity extends Activity {
                 new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
                 new int[]{Color.parseColor("#4DFFFFFF"), Color.parseColor("#26FFFFFF")}
         );
-        switchView.setThumbTintList(thumbStateList);
-        switchView.setTrackTintList(trackStateList);
+        
+        try {
+            switchView.setThumbTintList(thumbStateList);
+            switchView.setTrackTintList(trackStateList);
+        } catch (Throwable ignored) {}
 
-        switchView.setOnCheckedChangeListener((buttonView, checked) -> 
-            prefs.edit().putBoolean(prefKey, checked).apply()
-        );
+        switchView.setOnCheckedChangeListener((buttonView, checked) -> {
+            prefs.edit().putBoolean(prefKey, checked).apply();
+            try {
+                Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
+            } catch (Exception ignored) {}
+        });
 
         row.addView(textLayout);
         row.addView(switchView);
