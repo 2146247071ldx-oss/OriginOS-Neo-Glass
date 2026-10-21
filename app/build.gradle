@@ -24,3 +24,7 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
+
+dependencies {
+    compileOnly 'de.robv.android.xposed:api:82'
+}
