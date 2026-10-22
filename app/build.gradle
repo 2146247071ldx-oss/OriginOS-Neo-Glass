@@ -27,6 +27,5 @@ android {
 }
 
 dependencies {
-    // libxposed API 102：只参与编译，不打包进 APK
     compileOnly 'io.github.libxposed:api:102.0.0'
 }
