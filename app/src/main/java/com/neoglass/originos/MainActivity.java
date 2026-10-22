@@ -113,14 +113,13 @@ public class MainActivity extends Activity {
 
         contentContainer = new FrameLayout(this);
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        contentParams.setMargins(0, 0, 0, dp2px(100)); // 给底部导航留出空间
+        contentParams.setMargins(0, 0, 0, dp2px(100));
         mainTabsContainer.addView(contentContainer, contentParams);
 
         initOverviewPage();
         initGamePage();
         initSettingsPage();
 
-        // 底部导航栏（仿图3带图标）
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER);
@@ -140,7 +139,6 @@ public class MainActivity extends Activity {
         barParams.setMargins(0, 0, 0, dp2px(24));
         mainTabsContainer.addView(bottomBar, barParams);
 
-        // 构建每个导航项
         navOverview = createNavItem("🏠", "概览", bottomBar);
         navGame = createNavItem("🎮", "游戏", bottomBar);
         navSettings = createNavItem("⚙️", "设置", bottomBar);
@@ -162,7 +160,6 @@ public class MainActivity extends Activity {
         subPageContainer.setVisibility(View.GONE);
         contentContainer.removeAllViews();
 
-        // 重置颜色
         tvOverviewIcon.setAlpha(0.4f); tvOverviewLabel.setTextColor(COLOR_TEXT_SUB); navOverview.setBackground(null);
         tvGameIcon.setAlpha(0.4f); tvGameLabel.setTextColor(COLOR_TEXT_SUB); navGame.setBackground(null);
         tvSettingsIcon.setAlpha(0.4f); tvSettingsLabel.setTextColor(COLOR_TEXT_SUB); navSettings.setBackground(null);
@@ -197,7 +194,6 @@ public class MainActivity extends Activity {
 
         TextView tvTitle = createTitle(title);
         root.addView(tvTitle);
-
         root.addView(contentView);
 
         ScrollView scrollView = new ScrollView(this);
@@ -223,7 +219,6 @@ public class MainActivity extends Activity {
         mainTitle.setLayoutParams(p);
         root.addView(mainTitle);
 
-        // 状态卡片（完美复刻图3大绿勾）
         FrameLayout statusCardFrame = new FrameLayout(this);
         statusCardFrame.setBackground(createRoundRectBg(isActivated ? Color.parseColor("#E8F5E9") : Color.parseColor("#F2F3F5"), dp2px(20)));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -272,7 +267,6 @@ public class MainActivity extends Activity {
 
         root.addView(statusCardFrame);
 
-        // 信息卡片
         LinearLayout infoCard = createListGroup();
         String appVer = "1.0";
         try {
@@ -284,10 +278,8 @@ public class MainActivity extends Activity {
         addInfoItem(infoCard, "应用版本", appVer);
         addInfoItem(infoCard, "Android 版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
         addInfoItem(infoCard, "LSPosed 版本", xposedService != null ? "LSPosed " + xposedService.getFrameworkVersion() : "等待连接...");
-        addInfoItem(infoCard, "构建时间", "2026-10-21 00:48"); // 可动态获取
         root.addView(infoCard);
 
-        // 重载卡片
         LinearLayout reloadCard = createBigCard("重载全部界面适配", "覆盖已授权的系统桌面、系统界面等", "↻",
                 () -> {
                     new AlertDialog.Builder(this)
@@ -317,7 +309,7 @@ public class MainActivity extends Activity {
         root.addView(createBigCard("性能与温控", "防降频、满血调度、温控伪装", "⚡",
                 () -> openSubPage("性能与温控", buildThermalSettings())));
 
-        root.addView(createBigCard("画面与渲染", "强制高帧率、解锁 HDR 与分辨率", "🎮",
+        root.addView(createBigCard("画面与渲染", "强制屏幕刷新率、解锁高刷", "🎮",
                 () -> openSubPage("画面与渲染", buildRenderSettings())));
 
         root.addView(createBigCard("网络与延迟", "防断流、网络延迟伪装", "📶",
@@ -345,14 +337,14 @@ public class MainActivity extends Activity {
     private LinearLayout buildThermalSettings() {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "游戏温控欺骗", "系统读取假温度，拒绝降频 (需Root)", "thermal_spoof");
-        addInputItem(group, "伪装温控数值", "建议 25.0 (摄氏度)，直接写入电池", "thermal_temp");
+        addInputItem(group, "伪装温控数值", "建议 25.0 (摄氏度)，直接写入电池", "thermal_temp", "25.0");
         return group;
     }
 
     private LinearLayout buildRenderSettings() {
         LinearLayout group = createListGroup();
-        addSwitchItem(group, "强制高帧率", "尝试解锁游戏默认 60 帧限制", "unlock_fps");
-        addSwitchItem(group, "强制抗锯齿", "覆盖游戏纹理过滤设置", "force_aa");
+        // 使用输入框强制设置刷新率
+        addInputItem(group, "强制刷新率(Hz)", "输入144解锁高刷，填0恢复默认", "force_refresh_rate", "0");
         return group;
     }
 
@@ -365,7 +357,6 @@ public class MainActivity extends Activity {
     private LinearLayout buildHelperSettings() {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "解除截屏限制", "允许在游戏中随意截图/录屏", "screen_snap");
-        addSwitchItem(group, "息屏挂机", "息屏后阻止系统杀游戏后台", "keep_alive_bg");
         addSwitchItem(group, "解锁游戏魔盒", "强行开启散热风扇、m+模式等隐藏UI", "unlock_gamecube");
         return group;
     }
@@ -552,14 +543,14 @@ public class MainActivity extends Activity {
         parent.addView(row);
     }
 
-    private void addInputItem(LinearLayout parent, String labelText, String descText, final String prefKey) {
+    private void addInputItem(LinearLayout parent, String labelText, String descText, final String prefKey, final String defaultValue) {
         LinearLayout row = createBaseItem(labelText, descText);
         row.removeViewAt(row.getChildCount() - 1);
 
         TextView valueDisplay = new TextView(this);
         valueDisplay.setTextColor(COLOR_TEXT_SUB);
         valueDisplay.setTextSize(15);
-        String val = prefs.getString(prefKey, "25.0");
+        String val = prefs.getString(prefKey, defaultValue);
         valueDisplay.setText(val + " ›");
         row.addView(valueDisplay);
 
@@ -575,11 +566,20 @@ public class MainActivity extends Activity {
                 if (!newValue.isEmpty()) {
                     prefs.edit().putString(prefKey, newValue).apply();
                     valueDisplay.setText(newValue + " ›");
+                    
                     if ("thermal_temp".equals(prefKey)) {
                         runRootCommand("cmd battery set -f temp " + newValue);
-                        Toast.makeText(this, "已通过 Root 修改电池温度", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "保存成功，请重启生效", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "已修改系统电池温度", Toast.LENGTH_SHORT).show();
+                    } else if ("force_refresh_rate".equals(prefKey)) {
+                        if ("0".equals(newValue)) {
+                            runRootCommand("settings put system min_refresh_rate 60");
+                            runRootCommand("settings put system peak_refresh_rate 120");
+                            Toast.makeText(this, "已恢复默认刷新率", Toast.LENGTH_SHORT).show();
+                        } else {
+                            runRootCommand("settings put system min_refresh_rate " + newValue);
+                            runRootCommand("settings put system peak_refresh_rate " + newValue);
+                            Toast.makeText(this, "已强制锁定屏幕刷新率为 " + newValue + "Hz", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
             });
