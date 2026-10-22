@@ -39,11 +39,12 @@ public class GlassHook extends XposedModule {
             XposedInterface.Hooker forceTrueHooker = new XposedInterface.Hooker() {
                 @Override
                 public Object intercept(XposedInterface.Chain chain) throws Throwable {
-                    chain.proceed();
-                    return true;
+                    chain.proceed(); // 执行原方法
+                    return true;     // 强行返回 true
                 }
             };
 
+            // 开始调用安全 Hook
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.a", "a", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "v", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "m", forceTrueHooker);
@@ -61,12 +62,17 @@ public class GlassHook extends XposedModule {
         }
     }
 
+    // 终极兼容版：手写反射遍历，直接调用底层 hook
     private void safeHook(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> clazz = Class.forName(className, false, cl);
-            hookAllMethods(clazz, methodName, hooker);
+            for (java.lang.reflect.Method method : clazz.getDeclaredMethods()) {
+                if (method.getName().equals(methodName)) {
+                    hook(method, hooker); 
+                }
+            }
         } catch (Throwable t) {
-            log(Log.WARN, TAG, "找不到类或方法 (正常现象): " + className + "#" + methodName);
+            log(Log.WARN, TAG, "找不到类或方法 (跳过): " + className + "#" + methodName);
         }
     }
 }
