@@ -81,7 +81,7 @@ public class GlassHook extends XposedModule {
             } catch (Throwable ignored) {}
         }
 
-        // 3. 强制 144Hz 刷新率 (读取 Boolean 开关)
+        // 3. 强制 144Hz 刷新率
         boolean force144Hz = prefs.containsKey("force_144hz") && (Boolean) prefs.get("force_144hz");
         if (force144Hz && !"com.neoglass.originos".equals(pkgName)) {
             try {
@@ -127,6 +127,42 @@ public class GlassHook extends XposedModule {
                 log(Log.INFO, TAG, "已通过 Hook 强制 [" + pkgName + "] 高刷至 144Hz");
             } catch (Throwable t) {
                 log(Log.WARN, TAG, "刷新率 Hook 失败: " + t.getMessage());
+            }
+        }
+
+        // 4. 强制 IPv4 解析
+        boolean forceIPv4 = prefs.containsKey("force_ipv4") && (Boolean) prefs.get("force_ipv4");
+        if (forceIPv4 && !"com.neoglass.originos".equals(pkgName)) {
+            try {
+                Class<?> inetAddressClass = Class.forName("java.net.InetAddress", false, cl);
+                XposedInterface.Hooker ipv4Hooker = new XposedInterface.Hooker() {
+                    @Override
+                    public Object intercept(XposedInterface.Chain chain) throws Throwable {
+                        Object result = chain.proceed();
+                        if (result instanceof java.net.InetAddress[]) {
+                            java.net.InetAddress[] addrs = (java.net.InetAddress[]) result;
+                            java.util.List<java.net.InetAddress> ipv4List = new java.util.ArrayList<>();
+                            for (java.net.InetAddress addr : addrs) {
+                                if (addr instanceof java.net.Inet4Address) {
+                                    ipv4List.add(addr);
+                                }
+                            }
+                            if (!ipv4List.isEmpty()) {
+                                return ipv4List.toArray(new java.net.InetAddress[0]);
+                            }
+                        }
+                        return result;
+                    }
+                };
+                
+                for (java.lang.reflect.Method m : inetAddressClass.getDeclaredMethods()) {
+                    if (m.getName().equals("getAllByName") && m.getParameterTypes().length == 1 && m.getParameterTypes()[0] == String.class) {
+                        hook(m).intercept(ipv4Hooker);
+                    }
+                }
+                log(Log.INFO, TAG, "已强制 [" + pkgName + "] 过滤 IPv6 解析结果");
+            } catch (Throwable t) {
+                log(Log.WARN, TAG, "IPv4 Hook 失败: " + t.getMessage());
             }
         }
     }
