@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.res.ColorStateList;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -24,9 +23,8 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.InputStreamReader;
+import java.io.File;
 
 public class MainActivity extends Activity {
 
@@ -49,7 +47,10 @@ public class MainActivity extends Activity {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
 
-        isActivated = checkActivation();
+        // 【核心修复】直接检测私有目录的文件，无需 Root 权限
+        File activeFile = new File(getFilesDir(), "hook_active");
+        isActivated = activeFile.exists();
+
         initColors();
 
         FrameLayout mainRoot = new FrameLayout(this);
@@ -58,13 +59,14 @@ public class MainActivity extends Activity {
         contentContainer = new FrameLayout(this);
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        contentParams.setMargins(0, 0, 0, 200); 
+        contentParams.setMargins(0, 0, 0, 220); // 加大底部留白，防止按钮被遮挡
         mainRoot.addView(contentContainer, contentParams);
 
         initOverviewPage();
         initModulePage();
         initSettingsPage();
 
+        // 悬浮底栏
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -94,19 +96,8 @@ public class MainActivity extends Activity {
         switchPage(0);
     }
 
-    private boolean checkActivation() {
-        try {
-            Process p = Runtime.getRuntime().exec("su -c ls /data/local/tmp/origin_breaker_active");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String line = reader.readLine();
-            return line != null && line.contains("origin_breaker_active");
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     private void initColors() {
-        boolean useDark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean useDark = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
         if (useDark) {
             COLOR_BG = Color.parseColor("#121212"); COLOR_CARD = Color.parseColor("#1E1E1E");
             COLOR_TEXT_MAIN = Color.parseColor("#EAEAEA"); COLOR_TEXT_SUB = Color.parseColor("#888888");
@@ -135,10 +126,10 @@ public class MainActivity extends Activity {
     private TextView createNavItem(String text, LinearLayout parent) {
         TextView tv = new TextView(this);
         tv.setText(text); tv.setTextSize(16f);
-        tv.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        tv.setTypeface(Typeface.DEFAULT_BOLD);
         tv.setTextColor(COLOR_TEXT_MAIN);
         tv.setGravity(Gravity.CENTER);
-        tv.setPadding(60, 20, 60, 20);
+        tv.setPadding(50, 20, 50, 20);
         parent.addView(tv);
         return tv;
     }
@@ -152,38 +143,30 @@ public class MainActivity extends Activity {
 
         LinearLayout statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.VERTICAL);
-        statusCard.setPadding(60, 60, 60, 60);
+        statusCard.setPadding(50, 50, 50, 50);
         GradientDrawable statusShape = new GradientDrawable();
         statusShape.setColor(COLOR_STATUS_BG);
-        statusShape.setCornerRadius(60f);
+        statusShape.setCornerRadius(50f);
         statusCard.setBackground(statusShape);
         
         TextView statusTitle = new TextView(this);
         statusTitle.setText(isActivated ? "已入局" : "尚未相逢");
         statusTitle.setTextColor(COLOR_STATUS_TEXT);
         statusTitle.setTextSize(28f);
-        statusTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        statusTitle.setTypeface(Typeface.DEFAULT_BOLD);
         
         TextView statusSub = new TextView(this);
-        statusSub.setText(isActivated ? "已与 LSPosed 连通，设置可以落地。" : "框架服务还没接上，稍后再看一眼。");
+        statusSub.setText(isActivated ? "已与 LSPosed 连通，设置可以落地。" : "框架服务还没接上，请重启手机或检查作用域。");
         statusSub.setTextColor(COLOR_STATUS_TEXT);
         statusSub.setTextSize(14f);
-        statusSub.setAlpha(0.7f);
-        statusSub.setPadding(0, 10, 0, 40);
-        
-        TextView statusBottom = new TextView(this);
-        statusBottom.setText(isActivated ? "此身已在局中" : "缘分未到，框架未现");
-        statusBottom.setTextColor(COLOR_STATUS_TEXT);
-        statusBottom.setTextSize(14f);
-        statusBottom.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        statusSub.setPadding(0, 10, 0, 0);
         
         statusCard.addView(statusTitle);
         statusCard.addView(statusSub);
-        statusCard.addView(statusBottom);
         
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        statusParams.setMargins(0, 0, 0, 40);
+        statusParams.setMargins(0, 0, 0, 30);
         statusCard.setLayoutParams(statusParams);
         root.addView(statusCard);
 
@@ -197,8 +180,6 @@ public class MainActivity extends Activity {
         addInfoItem(infoCard, "系统版本", Build.DISPLAY);
         addInfoItem(infoCard, "应用版本", appVer);
         addInfoItem(infoCard, "Android 版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        addInfoItem(infoCard, "LSPosed 版本", isActivated ? "已连接" : "未连接");
-        addInfoItem(infoCard, "构建时间", "2026-10-22");
         addInfoItem(infoCard, "设备型号", Build.MODEL);
         root.addView(infoCard);
     }
@@ -206,11 +187,11 @@ public class MainActivity extends Activity {
     private void addInfoItem(LinearLayout parent, String title, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(60, 30, 60, 30);
+        row.setPadding(50, 30, 50, 30);
 
         TextView t = new TextView(this);
         t.setText(title); t.setTextColor(COLOR_TEXT_MAIN);
-        t.setTextSize(18f); t.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        t.setTextSize(16f); t.setTypeface(Typeface.DEFAULT_BOLD);
 
         TextView v = new TextView(this);
         v.setText(value); v.setTextColor(COLOR_TEXT_SUB);
@@ -230,14 +211,11 @@ public class MainActivity extends Activity {
         LinearLayout group1 = createListGroup();
         addSwitchItem(group1, "游戏温控欺骗", "开启后系统读取假温度，拒绝降频", "thermal_spoof");
         addSwitchItem(group1, "强制解除截屏限制", "针对目标 App，强行解除禁止截图", "screen_snap");
+        addSwitchItem(group1, "限制充电上限", "达到 80% 视为充满，减缓老化", "limit_charge");
+        addSwitchItem(group1, "息屏断网休眠", "没收后台流氓唤醒锁，极速省电", "wakelock_killer");
         root.addView(group1);
-
-        LinearLayout group2 = createListGroup();
-        addSwitchItem(group2, "限制充电上限", "达到 80% 视为充满，减缓老化", "limit_charge");
-        addSwitchItem(group2, "息屏断网休眠", "没收后台流氓唤醒锁，极速省电", "wakelock_killer");
-        root.addView(group2);
         
-        LinearLayout group3 = createListGroup();
+        LinearLayout group2 = createListGroup();
         LinearLayout actionRow = createBaseItem("重载全部界面适配", "点击生效底层更改（温控/电池/UI）");
         actionRow.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
@@ -248,21 +226,21 @@ public class MainActivity extends Activity {
                 .setNegativeButton("取消", null)
                 .show();
         });
-        group3.addView(actionRow);
-        root.addView(group3);
+        group2.addView(actionRow);
+        root.addView(group2);
     }
 
     private void initSettingsPage() {
         pageSettings = createBaseScroll();
         LinearLayout root = (LinearLayout) ((ScrollView) pageSettings.getChildAt(0)).getChildAt(0);
 
-        TextView title = createTitle("主题设置");
+        TextView title = createTitle("设置");
         root.addView(title);
 
         LinearLayout modeBar = new LinearLayout(this);
         modeBar.setOrientation(LinearLayout.HORIZONTAL);
         modeBar.setGravity(Gravity.CENTER_VERTICAL);
-        modeBar.setPadding(0, 0, 0, 40);
+        modeBar.setPadding(0, 0, 0, 30);
 
         String[] modes = {"跟随系统", "浅色", "深色"};
         int currentMode = prefs.getInt("theme_mode", 0);
@@ -273,7 +251,7 @@ public class MainActivity extends Activity {
             btn.setTextSize(14f);
             btn.setGravity(Gravity.CENTER);
             btn.setPadding(0, 20, 0, 20);
-            btn.setTypeface(Typeface.create("serif", Typeface.BOLD));
+            btn.setTypeface(Typeface.DEFAULT_BOLD);
             
             GradientDrawable bg = new GradientDrawable();
             bg.setCornerRadius(30f);
@@ -304,23 +282,17 @@ public class MainActivity extends Activity {
         addInputItem(group1, "系统动画速度", "默认 1.0 (越小越快)", "anim_scale");
         addInputItem(group1, "伪装温控数值", "建议 25.0 (摄氏度)", "thermal_temp");
         root.addView(group1);
-        
-        LinearLayout group2 = createListGroup();
-        addFakeSwitchItem(group2, "模糊", "启用顶栏和底栏的模糊效果");
-        addFakeSwitchItem(group2, "悬浮底栏", "使用 Apple 风格的悬浮底栏");
-        addFakeSwitchItem(group2, "液态玻璃", "启用悬浮底栏的液态玻璃效果");
-        root.addView(group2);
     }
 
     private TextView createTitle(String text) {
         TextView title = new TextView(this);
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
-        title.setTextSize(40f);
-        title.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+        title.setTextSize(36f);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.setMargins(0, 0, 0, 50);
+        p.setMargins(0, 0, 0, 40);
         title.setLayoutParams(p);
         return title;
     }
@@ -331,7 +303,7 @@ public class MainActivity extends Activity {
         scrollView.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(60, 120, 60, 100);
+        root.setPadding(50, 100, 50, 50); // 调整了内边距
         scrollView.addView(root);
         frame.addView(scrollView);
         return frame;
@@ -355,20 +327,22 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(60, 50, 60, 50);
+        row.setPadding(50, 40, 50, 40);
+        row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
+        // 【核心修复】强制文字容器占据剩余空间，防止被开关挤扁
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         textLayout.setLayoutParams(textParams);
 
         TextView label = new TextView(this);
         label.setText(labelText); label.setTextColor(COLOR_TEXT_MAIN);
-        label.setTextSize(18f); label.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        label.setTextSize(16f); label.setTypeface(Typeface.DEFAULT_BOLD);
 
         TextView desc = new TextView(this);
         desc.setText(descText); desc.setTextColor(COLOR_TEXT_SUB);
-        desc.setTextSize(14f); desc.setPadding(0, 8, 0, 0);
+        desc.setTextSize(13f); desc.setPadding(0, 6, 0, 0);
 
         textLayout.addView(label); textLayout.addView(desc);
         row.addView(textLayout);
@@ -379,6 +353,8 @@ public class MainActivity extends Activity {
         LinearLayout row = createBaseItem(labelText, descText);
         Switch switchView = new Switch(this);
         switchView.setChecked(prefs.getBoolean(prefKey, false));
+        // 防止开关把右边挤爆
+        switchView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ColorStateList thumbStateList = new ColorStateList(
@@ -397,27 +373,12 @@ public class MainActivity extends Activity {
         parent.addView(row);
     }
 
-    private void addFakeSwitchItem(LinearLayout parent, String labelText, String descText) {
-        LinearLayout row = createBaseItem(labelText, descText);
-        Switch switchView = new Switch(this);
-        switchView.setChecked(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            ColorStateList thumbStateList = new ColorStateList(
-                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
-                    new int[]{COLOR_ACCENT, Color.parseColor("#E0E0E0")}
-            );
-            try { switchView.setThumbTintList(thumbStateList); } catch (Throwable ignored) {}
-        }
-        row.addView(switchView);
-        parent.addView(row);
-    }
-
     private void addInputItem(LinearLayout parent, String labelText, String descText, final String prefKey) {
         LinearLayout row = createBaseItem(labelText, descText);
         
         TextView valueDisplay = new TextView(this);
         valueDisplay.setTextColor(COLOR_TEXT_SUB);
-        valueDisplay.setTextSize(16f);
+        valueDisplay.setTextSize(15f);
         String val = prefs.getString(prefKey, prefKey.equals("anim_scale") ? "1.0" : "25.0");
         valueDisplay.setText(val + " ›");
         row.addView(valueDisplay);
