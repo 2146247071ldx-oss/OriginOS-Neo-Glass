@@ -28,8 +28,6 @@ android {
 }
 
 dependencies {
-    // 编译期 Hook 接口，不可打包
     compileOnly 'io.github.libxposed:api:102.0.0'
-    // 恢复服务通信，用于查询激活状态
     implementation 'io.github.libxposed:service:102.0.0'
 }
