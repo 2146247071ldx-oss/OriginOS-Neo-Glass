@@ -1,4 +1,3 @@
-
 name: Build OriginOS Neo Glass APK
 
 on:
@@ -8,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -25,19 +24,35 @@ jobs:
           java-version: '17'
 
       - name: 安装 Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
       - name: 安装 Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.11.1'
 
       - name: 编译 APK
-        run: gradle --no-daemon --stacktrace --info assembleDebug
+        run: gradle --no-daemon --stacktrace assembleDebug
 
-      - name: 保存 APK
+      - name: 保存到 Actions Artifacts (备用)
         uses: actions/upload-artifact@v4
         with:
           name: OriginOS-Neo-Glass-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载刚生成的 APK
+        uses: actions/download-artifact@v4
+        with:
+          name: OriginOS-Neo-Glass-APK
+
+      - name: 自动发布到 Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          files: "*.apk"
+          name: "OriginBreaker 自动构建 #${{ github.run_number }}"
