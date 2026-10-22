@@ -25,8 +25,10 @@ public class GlassHook extends XposedModule {
         ClassLoader cl = param.getClassLoader();
         if (cl == null) return;
 
+        // 读取远程设置
         Map<String, ?> prefs = getRemotePreferences("NeoGlassPrefs").getAll();
 
+        // 目标：vivo 游戏魔盒
         if ("com.vivo.gamecube".equals(pkgName)) {
             boolean unlockGameCube = prefs.containsKey("unlock_gamecube") && (Boolean) prefs.get("unlock_gamecube");
             if (!unlockGameCube) {
@@ -36,15 +38,16 @@ public class GlassHook extends XposedModule {
 
             log(Log.INFO, TAG, "准备解锁游戏魔盒隐藏功能...");
 
+            // 强行返回 true 的 Hooker
             XposedInterface.Hooker forceTrueHooker = new XposedInterface.Hooker() {
                 @Override
                 public Object intercept(XposedInterface.Chain chain) throws Throwable {
-                    chain.proceed(); // 执行原方法
-                    return true;     // 强行返回 true
+                    chain.proceed();
+                    return true; // 强制返回 true
                 }
             };
 
-            // 开始调用安全 Hook
+            // 批量 Hook（使用正确的 API 102 语法）
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.a", "a", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "v", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "m", forceTrueHooker);
@@ -62,13 +65,14 @@ public class GlassHook extends XposedModule {
         }
     }
 
-    // 终极兼容版：手写反射遍历，直接调用底层 hook
+    // 安全 Hook 辅助方法（已修复 API 102 编译错误）
     private void safeHook(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> clazz = Class.forName(className, false, cl);
             for (java.lang.reflect.Method method : clazz.getDeclaredMethods()) {
                 if (method.getName().equals(methodName)) {
-                    hook(method, hooker); 
+                    // 核心修复：API 102 使用 hook().intercept() 链式调用
+                    hook(method).intercept(hooker); 
                 }
             }
         } catch (Throwable t) {
