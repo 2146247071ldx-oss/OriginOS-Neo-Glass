@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
         mainRoot = new FrameLayout(this);
         mainRoot.setBackgroundColor(COLOR_BG);
 
-        // 原生 Insets 处理，不使用 androidx 库
+        // 原生 Insets 处理系统栏
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             getWindow().setDecorFitsSystemWindows(false);
             getWindow().getDecorView().setOnApplyWindowInsetsListener((v, insets) -> {
@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
 
         TextView btnBack = new TextView(this);
         btnBack.setText("< 返回");
-        btnBack.setTextSize(sp2px(14));
+        btnBack.setTextSize(14); // 直接写 SP
         btnBack.setTextColor(COLOR_ACCENT);
         btnBack.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         btnBack.setPadding(0, 0, 0, dp2px(16));
@@ -202,7 +202,7 @@ public class MainActivity extends Activity {
         TextView mainTitle = new TextView(this);
         mainTitle.setText("OriginBreaker");
         mainTitle.setTextColor(COLOR_TEXT_MAIN);
-        mainTitle.setTextSize(sp2px(32));
+        mainTitle.setTextSize(32); // 直接写 SP
         mainTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, dp2px(16), 0, dp2px(24));
@@ -220,13 +220,13 @@ public class MainActivity extends Activity {
         TextView tvStatusTitle = new TextView(this);
         tvStatusTitle.setText(isActivated ? "已入局" : "未激活");
         tvStatusTitle.setTextColor(isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#333333"));
-        tvStatusTitle.setTextSize(sp2px(24));
+        tvStatusTitle.setTextSize(24); // 直接写 SP
         tvStatusTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
 
         TextView tvStatusSub = new TextView(this);
         tvStatusSub.setText(isActivated ? "已与 LSPosed 连通，设置可以落地。" : "请在 LSPosed 中勾选本应用与系统框架。");
         tvStatusSub.setTextColor(isActivated ? Color.parseColor("#388E3C") : Color.parseColor("#888888"));
-        tvStatusSub.setTextSize(sp2px(14));
+        tvStatusSub.setTextSize(14); // 直接写 SP
         tvStatusSub.setPadding(0, dp2px(8), 0, 0);
 
         statusCard.addView(tvStatusTitle);
@@ -343,7 +343,7 @@ public class MainActivity extends Activity {
 
         TextView tvIcon = new TextView(this);
         tvIcon.setText(icon);
-        tvIcon.setTextSize(sp2px(28));
+        tvIcon.setTextSize(28); // 直接写 SP
         tvIcon.setPadding(0, 0, dp2px(16), 0);
         card.addView(tvIcon);
 
@@ -355,13 +355,13 @@ public class MainActivity extends Activity {
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
         tvTitle.setTextColor(COLOR_TEXT_MAIN);
-        tvTitle.setTextSize(sp2px(18));
+        tvTitle.setTextSize(18); // 直接写 SP
         tvTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView tvDesc = new TextView(this);
         tvDesc.setText(desc);
         tvDesc.setTextColor(COLOR_TEXT_SUB);
-        tvDesc.setTextSize(sp2px(13));
+        tvDesc.setTextSize(13); // 直接写 SP
         tvDesc.setPadding(0, dp2px(4), 0, 0);
 
         textLayout.addView(tvTitle);
@@ -371,7 +371,7 @@ public class MainActivity extends Activity {
         TextView arrow = new TextView(this);
         arrow.setText("›");
         arrow.setTextColor(Color.parseColor("#CCCCCC"));
-        arrow.setTextSize(sp2px(24));
+        arrow.setTextSize(24); // 直接写 SP
         card.addView(arrow);
 
         card.setOnClickListener(v -> onClick.run());
@@ -381,7 +381,7 @@ public class MainActivity extends Activity {
     private TextView createNavItem(String text, LinearLayout parent) {
         TextView tv = new TextView(this);
         tv.setText(text);
-        tv.setTextSize(sp2px(15));
+        tv.setTextSize(15); // 直接写 SP
         tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         tv.setGravity(Gravity.CENTER);
         tv.setPadding(dp2px(20), dp2px(8), dp2px(20), dp2px(8));
@@ -393,7 +393,7 @@ public class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
-        title.setTextSize(sp2px(28));
+        title.setTextSize(28); // 直接写 SP
         title.setTypeface(Typeface.create("serif", Typeface.BOLD));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, 0, 0, dp2px(24));
@@ -442,13 +442,13 @@ public class MainActivity extends Activity {
         TextView label = new TextView(this);
         label.setText(labelText);
         label.setTextColor(COLOR_TEXT_MAIN);
-        label.setTextSize(sp2px(16));
+        label.setTextSize(16); // 直接写 SP
         label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView desc = new TextView(this);
         desc.setText(descText);
         desc.setTextColor(COLOR_TEXT_SUB);
-        desc.setTextSize(sp2px(13));
+        desc.setTextSize(13); // 直接写 SP
         desc.setPadding(0, dp2px(4), 0, 0);
 
         textLayout.addView(label);
@@ -458,7 +458,7 @@ public class MainActivity extends Activity {
         TextView arrow = new TextView(this);
         arrow.setText("›");
         arrow.setTextColor(Color.parseColor("#CCCCCC"));
-        arrow.setTextSize(sp2px(20));
+        arrow.setTextSize(20); // 直接写 SP
         row.addView(arrow);
 
         return row;
@@ -478,13 +478,13 @@ public class MainActivity extends Activity {
         TextView label = new TextView(this);
         label.setText(labelText);
         label.setTextColor(COLOR_TEXT_MAIN);
-        label.setTextSize(sp2px(16));
+        label.setTextSize(16); // 直接写 SP
         label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView desc = new TextView(this);
         desc.setText(descText);
         desc.setTextColor(COLOR_TEXT_SUB);
-        desc.setTextSize(sp2px(13));
+        desc.setTextSize(13); // 直接写 SP
         desc.setPadding(0, dp2px(4), 0, 0);
 
         textLayout.addView(label);
@@ -504,7 +504,7 @@ public class MainActivity extends Activity {
 
         TextView valueDisplay = new TextView(this);
         valueDisplay.setTextColor(COLOR_TEXT_SUB);
-        valueDisplay.setTextSize(sp2px(15));
+        valueDisplay.setTextSize(15); // 直接写 SP
         String val = prefs.getString(prefKey, "25.0");
         valueDisplay.setText(val + " ›");
         row.addView(valueDisplay);
@@ -543,13 +543,13 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(title);
         t.setTextColor(COLOR_TEXT_MAIN);
-        t.setTextSize(sp2px(16));
+        t.setTextSize(16); // 直接写 SP
         t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView v = new TextView(this);
         v.setText(value);
         v.setTextColor(COLOR_TEXT_SUB);
-        v.setTextSize(sp2px(14));
+        v.setTextSize(14); // 直接写 SP
         v.setPadding(0, dp2px(4), 0, 0);
 
         row.addView(t);
@@ -578,12 +578,8 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    // 单位转换工具
+    // 单位转换工具 (只给 Padding, Margin, CornerRadius 用)
     private int dp2px(float dp) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
-    }
-
-    private float sp2px(float sp) {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, getResources().getDisplayMetrics());
     }
 }
