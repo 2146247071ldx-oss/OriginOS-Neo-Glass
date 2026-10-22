@@ -24,9 +24,6 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
 import java.io.DataOutputStream;
 
 import io.github.libxposed.service.XposedService;
@@ -51,20 +48,11 @@ public class MainActivity extends Activity {
     private FrameLayout contentContainer;
     private LinearLayout pageOverview, pageGame, pageSettings;
     private TextView navOverview, navGame, navSettings;
-
-    private int statusBarHeight = 0;
-    private int navigationBarHeight = 0;
+    private int currentPage = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // 获取系统栏高度
-        WindowInsets insets = getWindow().getDecorView().getRootWindowInsets();
-        if (insets != null) {
-            statusBarHeight = insets.getInsets(WindowInsets.Type.statusBars()).top;
-            navigationBarHeight = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
-        }
 
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
         try {
@@ -90,13 +78,15 @@ public class MainActivity extends Activity {
         mainRoot = new FrameLayout(this);
         mainRoot.setBackgroundColor(COLOR_BG);
 
-        // 处理系统栏 Insets，避免内容被遮挡
-        ViewCompat.setOnApplyWindowInsetsListener(mainRoot, (v, windowInsets) -> {
-            WindowInsetsCompat compatInsets = windowInsets;
-            android.graphics.Insets systemBars = compatInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return WindowInsetsCompat.CONSUMED;
-        });
+        // 原生 Insets 处理，不使用 androidx 库
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+            getWindow().getDecorView().setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
+                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                return WindowInsets.CONSUMED;
+            });
+        }
 
         initMainTabs();
 
@@ -156,6 +146,7 @@ public class MainActivity extends Activity {
     }
 
     private void switchPage(int index) {
+        currentPage = index;
         subPageContainer.setVisibility(View.GONE);
         contentContainer.removeAllViews();
         navOverview.setTextColor(COLOR_TEXT_SUB);
@@ -179,7 +170,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp2px(24), dp2px(24) + statusBarHeight, dp2px(24), dp2px(24));
+        root.setPadding(dp2px(24), dp2px(24), dp2px(24), dp2px(24));
 
         TextView btnBack = new TextView(this);
         btnBack.setText("< 返回");
@@ -258,7 +249,7 @@ public class MainActivity extends Activity {
 
     private void refreshOverviewStatus() {
         initOverviewPage();
-        if (contentContainer != null && pageOverview != null && navOverview.getCurrentTextColor() == COLOR_ACCENT) {
+        if (currentPage == 0 && pageOverview != null) {
             contentContainer.removeAllViews();
             contentContainer.addView(pageOverview);
         }
