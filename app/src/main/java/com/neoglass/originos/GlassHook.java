@@ -76,7 +76,8 @@ public class GlassHook extends XposedModule {
                         if ((mask & 0x00002000) != 0) {
                             mask &= ~0x00002000;
                         }
-                        return chain.proceed(flags, mask);
+                        // 核心修复：使用 Object[] 传递参数
+                        return chain.proceed(new Object[]{flags, mask});
                     }
                 };
                 
