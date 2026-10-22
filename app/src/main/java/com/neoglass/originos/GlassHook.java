@@ -27,6 +27,7 @@ public class GlassHook extends XposedModule {
 
         Map<String, ?> prefs = getRemotePreferences("NeoGlassPrefs").getAll();
 
+        // 1. 解锁游戏魔盒
         if ("com.vivo.gamecube".equals(pkgName)) {
             boolean unlockGameCube = prefs.containsKey("unlock_gamecube") && (Boolean) prefs.get("unlock_gamecube");
             if (!unlockGameCube) {
@@ -58,6 +59,57 @@ public class GlassHook extends XposedModule {
             safeHook(cl, "com.vivo.common.utils.m0", "f", forceTrueHooker);
 
             log(Log.INFO, TAG, "游戏魔盒 Hook 注入完毕！");
+        }
+
+        // 2. 强制解除截屏限制
+        boolean screenSnap = prefs.containsKey("screen_snap") && (Boolean) prefs.get("screen_snap");
+        if (screenSnap) {
+            log(Log.INFO, TAG, "准备解除 [" + pkgName + "] 的截屏限制...");
+            try {
+                Class<?> windowClass = Class.forName("android.view.Window", false, cl);
+                XposedInterface.Hooker removeSecureFlagHooker = new XposedInterface.Hooker() {
+                    @Override
+                    public Object intercept(XposedInterface.Chain chain) throws Throwable {
+                        int flags = (int) chain.getArg(0);
+                        int mask = (int) chain.getArg(1);
+                        // WindowManager.LayoutParams.FLAG_SECURE = 0x00002000
+                        if ((mask & 0x00002000) != 0) {
+                            mask &= ~0x00002000;
+                        }
+                        return chain.proceed(flags, mask);
+                    }
+                };
+                
+                for (java.lang.reflect.Method method : windowClass.getDeclaredMethods()) {
+                    if (method.getName().equals("setFlags") && method.getParameterTypes().length == 2) {
+                        hook(method).intercept(removeSecureFlagHooker);
+                    }
+                }
+                log(Log.INFO, TAG, "截屏限制 Hook 注入完毕！");
+            } catch (Throwable t) {
+                log(Log.WARN, TAG, "截屏 Hook 失败 (系统版本不兼容)");
+            }
+        }
+
+        // 3. 强制刷新率欺骗 (仅对非模块本身的进程生效)
+        String forceRefreshStr = prefs.containsKey("force_refresh_rate") ? (String) prefs.get("force_refresh_rate") : "0";
+        if (!"0".equals(forceRefreshStr) && !"com.neoglass.originos".equals(pkgName)) {
+            try {
+                final float targetHz = Float.parseFloat(forceRefreshStr);
+                Class<?> displayClass = Class.forName("android.view.Display", false, cl);
+                XposedInterface.Hooker refreshRateHooker = new XposedInterface.Hooker() {
+                    @Override
+                    public Object intercept(XposedInterface.Chain chain) throws Throwable {
+                        return targetHz;
+                    }
+                };
+                for (java.lang.reflect.Method method : displayClass.getDeclaredMethods()) {
+                    if (method.getName().equals("getRefreshRate")) {
+                        hook(method).intercept(refreshRateHooker);
+                    }
+                }
+                log(Log.INFO, TAG, "已强制修改 [" + pkgName + "] 的刷新率为 " + targetHz + "Hz");
+            } catch (Throwable ignored) {}
         }
     }
 
