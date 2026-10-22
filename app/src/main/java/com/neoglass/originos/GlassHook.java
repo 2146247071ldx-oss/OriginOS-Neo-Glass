@@ -25,10 +25,9 @@ public class GlassHook extends XposedModule {
         ClassLoader cl = param.getClassLoader();
         if (cl == null) return;
 
-        // 读取你在 App 里保存的开关状态和输入值
         Map<String, ?> prefs = getRemotePreferences("NeoGlassPrefs").getAll();
 
-        // ========== 1. 解锁游戏魔盒 ==========
+        // 1. 解锁游戏魔盒
         if ("com.vivo.gamecube".equals(pkgName)) {
             boolean unlockGameCube = prefs.containsKey("unlock_gamecube") && (Boolean) prefs.get("unlock_gamecube");
             if (unlockGameCube) {
@@ -56,7 +55,7 @@ public class GlassHook extends XposedModule {
             }
         }
 
-        // ========== 2. 强制解除截屏限制 ==========
+        // 2. 强制解除截屏限制
         boolean screenSnap = prefs.containsKey("screen_snap") && (Boolean) prefs.get("screen_snap");
         if (screenSnap) {
             try {
@@ -66,11 +65,9 @@ public class GlassHook extends XposedModule {
                     public Object intercept(XposedInterface.Chain chain) throws Throwable {
                         int flags = (int) chain.getArg(0);
                         int mask = (int) chain.getArg(1);
-                        // 抹除 FLAG_SECURE (0x00002000)
                         if ((mask & 0x00002000) != 0) {
                             mask &= ~0x00002000;
                         }
-                        // 这里使用 Object[] 传参，解决之前 API 报错的问题
                         return chain.proceed(new Object[]{flags, mask});
                     }
                 };
@@ -84,13 +81,12 @@ public class GlassHook extends XposedModule {
             } catch (Throwable ignored) {}
         }
 
-        // ========== 3. 免 Root 强制高刷 (144Hz) ==========
-        String forceRefreshStr = prefs.containsKey("force_refresh_rate") ? (String) prefs.get("force_refresh_rate") : "0";
-        if (!"0".equals(forceRefreshStr) && !"com.neoglass.originos".equals(pkgName)) {
+        // 3. 强制 144Hz 刷新率 (读取 Boolean 开关)
+        boolean force144Hz = prefs.containsKey("force_144hz") && (Boolean) prefs.get("force_144hz");
+        if (force144Hz && !"com.neoglass.originos".equals(pkgName)) {
             try {
-                final float targetHz = Float.parseFloat(forceRefreshStr);
+                final float targetHz = 144.0f;
                 
-                // 招数 A：骗系统的窗口分配器 (强行改写窗口的 preferredRefreshRate)
                 Class<?> windowClass = Class.forName("android.view.Window", false, cl);
                 Class<?> layoutParamsClass = Class.forName("android.view.WindowManager$LayoutParams", false, cl);
                 
@@ -114,7 +110,6 @@ public class GlassHook extends XposedModule {
                     }
                 }
 
-                // 招数 B：骗游戏引擎的 Display 接口 (让游戏以为自己跑在 144Hz 屏幕上)
                 Class<?> displayClass = Class.forName("android.view.Display", false, cl);
                 XposedInterface.Hooker displayHooker = new XposedInterface.Hooker() {
                     @Override
@@ -129,14 +124,13 @@ public class GlassHook extends XposedModule {
                     }
                 }
 
-                log(Log.INFO, TAG, "已通过纯 Hook 强制 [" + pkgName + "] 高刷至 " + targetHz + "Hz");
+                log(Log.INFO, TAG, "已通过 Hook 强制 [" + pkgName + "] 高刷至 144Hz");
             } catch (Throwable t) {
                 log(Log.WARN, TAG, "刷新率 Hook 失败: " + t.getMessage());
             }
         }
     }
 
-    // 安全执行 Hook 的辅助方法，防止类找不到导致游戏崩溃
     private void safeHook(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> clazz = Class.forName(className, false, cl);
