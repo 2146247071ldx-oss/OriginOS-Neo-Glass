@@ -20,6 +20,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -68,14 +69,33 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
         applyTheme(); 
 
-        // 核心修复：Android 12+ 原生窗口模糊 (绝对兼容 Android 16)
-        if (prefs.getBoolean("theme_blur", false) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try {
-                getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
-                int blurRadius = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
-                // 使用官方公开的 API
-                getWindow().setBackgroundBlurRadius(blurRadius);
-            } catch (Throwable ignored) {}
+        // 沉浸式全屏模式
+        if (prefs.getBoolean("full_screen", false)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                getWindow().setDecorFitsSystemWindows(false);
+                WindowInsetsController controller = getWindow().getInsetsController();
+                if (controller != null) {
+                    controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            } else {
+                getWindow().getDecorView().setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN);
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                getWindow().setDecorFitsSystemWindows(false);
+                getWindow().getDecorView().setOnApplyWindowInsetsListener((v, insets) -> {
+                    android.graphics.Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
+                    v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+                    return WindowInsets.CONSUMED;
+                });
+            }
         }
 
         try {
@@ -100,15 +120,6 @@ public class MainActivity extends Activity {
 
         mainRoot = new FrameLayout(this);
         mainRoot.setBackgroundColor(COLOR_BG);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getWindow().setDecorFitsSystemWindows(false);
-            getWindow().getDecorView().setOnApplyWindowInsetsListener((v, insets) -> {
-                android.graphics.Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
-                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-                return WindowInsets.CONSUMED;
-            });
-        }
 
         initMainTabs();
 
@@ -176,7 +187,6 @@ public class MainActivity extends Activity {
         initSettingsPage();
 
         boolean isFloating = prefs.getBoolean("theme_floating_bar", true);
-        boolean isGlass = prefs.getBoolean("theme_liquid_glass", false);
 
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
@@ -190,23 +200,20 @@ public class MainActivity extends Activity {
         if (isFloating) {
             bottomBar.setPadding(dp2px(16), dp2px(12), dp2px(16), dp2px(12));
             
-            if (isGlass) {
-                GradientDrawable glassBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, 
-                    new int[]{ isDarkMode ? Color.parseColor("#4DFFFFFF") : Color.parseColor("#A6FFFFFF"), 
-                               isDarkMode ? Color.parseColor("#1A000000") : Color.parseColor("#40FFFFFF") });
-                glassBg.setCornerRadius(dp2px(30));
-                glassBg.setStroke(dp2px(1), isDarkMode ? Color.parseColor("#66FFFFFF") : Color.parseColor("#CCFFFFFF"));
-                bottomBar.setBackground(glassBg);
-                bottomBar.setElevation(dp2px(16));
-                bottomBar.setOutlineAmbientShadowColor(Color.BLACK);
-                bottomBar.setOutlineSpotShadowColor(Color.BLACK);
+            GradientDrawable barBg = new GradientDrawable();
+            barBg.setCornerRadius(dp2px(30));
+            
+            if (prefs.getBoolean("theme_monet", false)) {
+                int color = isDarkMode ? Color.parseColor("#4D") : Color.parseColor("#26");
+                int r = Color.red(COLOR_ACCENT), g = Color.green(COLOR_ACCENT), b = Color.blue(COLOR_ACCENT);
+                int bgColor = Color.argb(isDarkMode ? 80 : 40, r, g, b);
+                barBg.setColor(bgColor);
             } else {
-                GradientDrawable barBg = new GradientDrawable();
-                barBg.setCornerRadius(dp2px(30));
                 barBg.setColor(isDarkMode ? Color.parseColor("#2A2A2A") : Color.parseColor("#F2F3F5"));
-                bottomBar.setBackground(barBg);
-                bottomBar.setElevation(dp2px(4));
             }
+            
+            bottomBar.setBackground(barBg);
+            bottomBar.setElevation(dp2px(6));
             barParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
             barParams.setMargins(0, 0, 0, dp2px(24));
         } else {
@@ -259,11 +266,10 @@ public class MainActivity extends Activity {
         tvGameIcon.setAlpha(0.4f); tvGameLabel.setTextColor(COLOR_TEXT_SUB); navGame.setBackground(null);
         tvSettingsIcon.setAlpha(0.4f); tvSettingsLabel.setTextColor(COLOR_TEXT_SUB); navSettings.setBackground(null);
 
-        boolean isGlass = prefs.getBoolean("theme_liquid_glass", false);
         int activeBgColor;
-        
-        if (isGlass) {
-            activeBgColor = isDarkMode ? Color.parseColor("#33FFFFFF") : Color.parseColor("#80FFFFFF");
+        if (prefs.getBoolean("theme_monet", false)) {
+            int r = Color.red(COLOR_ACCENT), g = Color.green(COLOR_ACCENT), b = Color.blue(COLOR_ACCENT);
+            activeBgColor = Color.argb(isDarkMode ? 100 : 60, r, g, b);
         } else {
             activeBgColor = isDarkMode ? Color.parseColor("#444444") : Color.parseColor("#E5E7EB");
         }
@@ -606,10 +612,19 @@ public class MainActivity extends Activity {
         root.addView(modeGroup);
 
         LinearLayout group = createListGroup();
+        addSwitchItem(group, "隐藏桌面图标", "开启后桌面图标消失，只能从 LSPosed 进入", "hide_app_icon", () -> {
+            boolean hide = prefs.getBoolean("hide_app_icon", false);
+            if (hide) {
+                Toast.makeText(this, "请从 LSPosed 管理器或负一屏搜索进入本应用", Toast.LENGTH_LONG).show();
+                runRootCommand("pm disable-user " + getPackageName() + "/" + MainActivity.class.getName());
+            } else {
+                runRootCommand("pm enable " + getPackageName() + "/" + MainActivity.class.getName());
+                Toast.makeText(this, "桌面图标已恢复", Toast.LENGTH_SHORT).show();
+            }
+        });
+        addSwitchItem(group, "沉浸式全屏", "隐藏系统状态栏和导航栏", "full_screen", this::recreate);
         addSwitchItem(group, "启用 Monet 颜色", "跟随系统壁纸动态取色 (需 Android 12+)", "theme_monet", this::recreate);
-        addSwitchItem(group, "全局模糊效果", "启用系统底层的窗口模糊效果", "theme_blur", this::recreate);
         addSwitchItem(group, "悬浮底栏", "使用 Apple 风格的悬浮底栏", "theme_floating_bar", this::recreate);
-        addSwitchItem(group, "液态玻璃", "启用悬浮底栏的液态玻璃反光效果", "theme_liquid_glass", this::recreate);
         root.addView(group);
         return root;
     }
@@ -914,11 +929,11 @@ public class MainActivity extends Activity {
         parent.addView(row);
     }
 
+    // 核心修改：改成图2的上下堆叠排版
     private void addInfoItem(LinearLayout parent, String title, String value) {
         LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp2px(24), dp2px(20), dp2px(24), dp2px(20));
+        row.setOrientation(LinearLayout.VERTICAL); // 改为垂直排布
+        row.setPadding(dp2px(24), dp2px(16), dp2px(24), dp2px(16));
         row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView t = new TextView(this);
@@ -931,8 +946,7 @@ public class MainActivity extends Activity {
         v.setText(value);
         v.setTextColor(COLOR_TEXT_SUB);
         v.setTextSize(14);
-        v.setGravity(Gravity.RIGHT);
-        v.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        v.setPadding(0, dp2px(6), 0, 0); // 标题和值之间的间距
 
         row.addView(t);
         row.addView(v);
