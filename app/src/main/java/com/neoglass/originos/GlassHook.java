@@ -25,10 +25,8 @@ public class GlassHook extends XposedModule {
         ClassLoader cl = param.getClassLoader();
         if (cl == null) return;
 
-        // 读取你在 App 里设置的开关状态
         Map<String, ?> prefs = getRemotePreferences("NeoGlassPrefs").getAll();
 
-        // ========== 游戏魔盒解锁 ==========
         if ("com.vivo.gamecube".equals(pkgName)) {
             boolean unlockGameCube = prefs.containsKey("unlock_gamecube") && (Boolean) prefs.get("unlock_gamecube");
             if (!unlockGameCube) {
@@ -38,22 +36,19 @@ public class GlassHook extends XposedModule {
 
             log(Log.INFO, TAG, "准备解锁游戏魔盒隐藏功能...");
 
-            // 强行返回 true 的回调
             XposedInterface.Hooker forceTrueHooker = new XposedInterface.Hooker() {
                 @Override
                 public Object intercept(XposedInterface.Chain chain) throws Throwable {
-                    chain.proceed(); // 先让原方法执行
-                    return true;     // 然后强制覆盖返回值为 true
+                    chain.proceed();
+                    return true;
                 }
             };
 
-            // 性能模式与散热风扇相关类
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.a", "a", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "v", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "m", forceTrueHooker);
             safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "n", forceTrueHooker);
             
-            // 通用功能开关类
             safeHook(cl, "com.vivo.common.utils.w0", "a", forceTrueHooker);
             safeHook(cl, "com.vivo.common.a", "v0", forceTrueHooker);
             safeHook(cl, "com.vivo.common.a", "D1", forceTrueHooker);
@@ -66,7 +61,6 @@ public class GlassHook extends XposedModule {
         }
     }
 
-    // 辅助方法：改名为 safeHook 避免与 libxposed 的 hookAllMethods 冲突
     private void safeHook(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> clazz = Class.forName(className, false, cl);
