@@ -5,7 +5,6 @@
     <application
         android:allowBackup="false"
         android:label="OriginBreaker"
-        android:description="OriginBreaker：OriginOS 模块"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">
 
         <activity
