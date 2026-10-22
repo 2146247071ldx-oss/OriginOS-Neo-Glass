@@ -103,7 +103,6 @@ public class MainActivity extends Activity {
         initGamePage();
         initSettingsPage();
 
-        // 底部悬浮导航
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -178,8 +177,6 @@ public class MainActivity extends Activity {
         subPageContainer.setAlpha(0f);
         subPageContainer.animate().alpha(1f).setDuration(200).start();
     }
-
-    // ================== 页面构建 ==================
 
     private void initOverviewPage() {
         pageOverview = createBaseScroll();
@@ -288,8 +285,6 @@ public class MainActivity extends Activity {
         root.addView(group2);
     }
 
-    // ================== 二级页具体功能 ==================
-
     private LinearLayout buildThermalSettings() {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "游戏温控欺骗", "系统读取假温度，拒绝降频 (需Root)", "thermal_spoof");
@@ -314,12 +309,9 @@ public class MainActivity extends Activity {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "解除截屏限制", "允许在游戏中随意截图/录屏", "screen_snap");
         addSwitchItem(group, "息屏挂机", "息屏后阻止系统杀游戏后台", "keep_alive_bg");
-        // 核心新增：解锁游戏魔盒
         addSwitchItem(group, "解锁游戏魔盒", "强行开启散热风扇、m+模式等隐藏UI", "unlock_gamecube");
         return group;
     }
-
-    // ================== 组件构建工具 ==================
 
     private LinearLayout createBigCard(String title, String desc, String icon, Runnable onClick) {
         LinearLayout card = new LinearLayout(this);
@@ -515,7 +507,6 @@ public class MainActivity extends Activity {
                     prefs.edit().putString(prefKey, newValue).apply();
                     valueDisplay.setText(newValue + " ›");
                     
-                    // 如果是温控数值，直接执行 Root 命令注入电池数据
                     if ("thermal_temp".equals(prefKey)) {
                         runRootCommand("cmd battery set -f temp " + newValue);
                         Toast.makeText(this, "已通过 Root 修改系统电池温度", Toast.LENGTH_SHORT).show();
