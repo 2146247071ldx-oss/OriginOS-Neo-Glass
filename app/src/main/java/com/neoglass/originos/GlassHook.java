@@ -4,11 +4,11 @@ import android.os.IBinder;
 import android.view.WindowManager;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 import de.robv.android.xposed.XSharedPreferences;
-import java.io.File;
 
 public class GlassHook implements IXposedHookLoadPackage {
 
@@ -16,19 +16,19 @@ public class GlassHook implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-        if ("com.neoglass.originos".equals(lpparam.packageName)) return;
-
-        // 【核心修复】直接往 App 私有目录写一个标记文件，不需要任何 Root 权限
-        if ("android".equals(lpparam.packageName) || "com.android.systemui".equals(lpparam.packageName)) {
+        
+        // 【核心修复】纯 LSPosed 拦截，一旦模块生效，强改 App 状态为已激活
+        if ("com.neoglass.originos".equals(lpparam.packageName)) {
             try {
-                File activeFile = new File("/data/data/com.neoglass.originos/files/hook_active");
-                if (!activeFile.getParentFile().exists()) {
-                    activeFile.getParentFile().mkdirs();
-                }
-                if (!activeFile.exists()) {
-                    activeFile.createNewFile();
-                }
+                XposedHelpers.findAndHookMethod("com.neoglass.originos.MainActivity", lpparam.classLoader, 
+                    "isModuleActive", new XC_MethodReplacement() {
+                        @Override
+                        protected Object replaceHookedMethod(MethodHookParam param) throws Throwable {
+                            return true; 
+                        }
+                    });
             } catch (Throwable ignored) {}
+            return; 
         }
 
         prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
