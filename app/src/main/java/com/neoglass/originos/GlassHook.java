@@ -16,14 +16,14 @@ public class GlassHook extends XposedModule {
         super.onModuleLoaded(param);
 
         String processName = param.getProcessName();
+        boolean systemServer = param.isSystemServer();
 
         log(
                 Log.INFO,
                 TAG,
-                "Module loaded. API="
-                        + getApiVersion()
-                        + ", process="
-                        + processName
+                "MODULE_ALIVE: OriginBreaker API 102 loaded"
+                        + " | process=" + processName
+                        + " | systemServer=" + systemServer
         );
     }
 }
