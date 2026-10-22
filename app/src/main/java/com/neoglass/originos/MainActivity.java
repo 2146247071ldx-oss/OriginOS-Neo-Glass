@@ -25,7 +25,6 @@ import android.widget.Toast;
 
 import java.io.DataOutputStream;
 
-// 引入 libxposed service 核心类，用于真实查询激活状态
 import io.github.libxposed.service.XposedService;
 import io.github.libxposed.service.XposedServiceHelper;
 
@@ -46,7 +45,6 @@ public class MainActivity extends Activity {
     private LinearLayout pageOverview, pageModule, pageSettings;
     private TextView navOverview, navModule, navSettings;
 
-    // 用于动态更新状态卡片
     private LinearLayout statusCardView;
     private TextView tvStatusTitle;
     private TextView tvStatusSub;
@@ -56,13 +54,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
         try {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
 
-        // 1. 注册服务监听，真实查询 LSPosed 激活状态
+        // 注册服务监听，真实查询 LSPosed 激活状态
         XposedServiceHelper.registerListener(new XposedServiceHelper.OnServiceListener() {
             @Override
             public void onServiceBind(XposedService service) {
@@ -83,22 +81,21 @@ public class MainActivity extends Activity {
         contentContainer = new FrameLayout(this);
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        contentParams.setMargins(0, 0, 0, 200); 
+        contentParams.setMargins(0, 0, 0, 200);
         mainRoot.addView(contentContainer, contentParams);
 
         initOverviewPage();
         initModulePage();
         initSettingsPage();
 
-        // 底部悬浮导航栏
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
         bottomBar.setPadding(40, 20, 40, 20);
-        
+
         GradientDrawable barBg = new GradientDrawable();
         barBg.setColor(COLOR_BOTTOM_BAR);
-        barBg.setCornerRadius(100f); 
+        barBg.setCornerRadius(100f);
         barBg.setStroke(2, Color.parseColor("#E0E0E0"));
         bottomBar.setBackground(barBg);
         bottomBar.setElevation(20f);
@@ -119,13 +116,13 @@ public class MainActivity extends Activity {
 
         setContentView(mainRoot);
         switchPage(0);
+        updateStatusUI(false);
     }
 
-    // 动态更新卡片颜色与文字
     private void updateStatusUI(boolean active) {
         isActivated = active;
         if (statusCardView == null) return;
-        
+
         if (active) {
             statusCardView.setBackground(createRoundRectBg(Color.parseColor("#E5F6E6"), 16f));
             tvStatusTitle.setText("已入局");
@@ -153,25 +150,25 @@ public class MainActivity extends Activity {
 
     private void switchPage(int index) {
         contentContainer.removeAllViews();
-        navOverview.setTextColor(COLOR_TEXT_SUB); 
-        navModule.setTextColor(COLOR_TEXT_SUB); 
+        navOverview.setTextColor(COLOR_TEXT_SUB);
+        navModule.setTextColor(COLOR_TEXT_SUB);
         navSettings.setTextColor(COLOR_TEXT_SUB);
-        
-        if (index == 0) { 
-            contentContainer.addView(pageOverview); 
-            navOverview.setTextColor(COLOR_ACCENT); 
-        } else if (index == 1) { 
-            contentContainer.addView(pageModule); 
-            navModule.setTextColor(COLOR_ACCENT); 
-        } else if (index == 2) { 
-            contentContainer.addView(pageSettings); 
-            navSettings.setTextColor(COLOR_ACCENT); 
+
+        if (index == 0) {
+            contentContainer.addView(pageOverview);
+            navOverview.setTextColor(COLOR_ACCENT);
+        } else if (index == 1) {
+            contentContainer.addView(pageModule);
+            navModule.setTextColor(COLOR_ACCENT);
+        } else if (index == 2) {
+            contentContainer.addView(pageSettings);
+            navSettings.setTextColor(COLOR_ACCENT);
         }
     }
 
     private TextView createNavItem(String text, LinearLayout parent) {
         TextView tv = new TextView(this);
-        tv.setText(text); 
+        tv.setText(text);
         tv.setTextSize(15f);
         tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         tv.setGravity(Gravity.CENTER);
@@ -184,7 +181,6 @@ public class MainActivity extends Activity {
         pageOverview = createBaseScroll();
         LinearLayout root = (LinearLayout) ((ScrollView) pageOverview.getChildAt(0)).getChildAt(0);
 
-        // 删除了左上角的“概览”，替换为类似图2的顶部主标题
         TextView mainTitle = new TextView(this);
         mainTitle.setText("OriginBreaker");
         mainTitle.setTextColor(COLOR_TEXT_MAIN);
@@ -195,13 +191,11 @@ public class MainActivity extends Activity {
         mainTitle.setLayoutParams(titleParams);
         root.addView(mainTitle);
 
-        // 状态卡片框架 (允许右侧放对勾)
         FrameLayout statusFrame = new FrameLayout(this);
         LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         frameParams.setMargins(0, 0, 0, 20);
         statusFrame.setLayoutParams(frameParams);
 
-        // 状态卡片内容
         statusCardView = new LinearLayout(this);
         statusCardView.setOrientation(LinearLayout.VERTICAL);
         statusCardView.setPadding(60, 60, 60, 60);
@@ -223,7 +217,6 @@ public class MainActivity extends Activity {
         statusCardView.addView(tvStatusTitle);
         statusCardView.addView(tvStatusSub);
 
-        // 右侧大对勾
         tvCheckIcon = new TextView(this);
         tvCheckIcon.setText("✓");
         tvCheckIcon.setTextColor(Color.parseColor("#4CAF50"));
@@ -238,7 +231,6 @@ public class MainActivity extends Activity {
         statusFrame.addView(tvCheckIcon);
         root.addView(statusFrame);
 
-        // 信息卡片
         LinearLayout infoCard = createListGroup();
         String appVer = "1.0";
         try {
@@ -249,25 +241,23 @@ public class MainActivity extends Activity {
         addInfoItem(infoCard, "系统版本", Build.DISPLAY);
         addInfoItem(infoCard, "应用版本", appVer);
         addInfoItem(infoCard, "Android 版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        
         tvLsposedVer = addInfoItem(infoCard, "LSPosed 版本", "等待连接...");
         addInfoItem(infoCard, "设备型号", Build.MODEL);
         root.addView(infoCard);
 
-        // 重载按钮卡片 (把模块页的重载移到了概览页)
         LinearLayout group2 = createListGroup();
         LinearLayout rowContainer = new LinearLayout(this);
         rowContainer.setOrientation(LinearLayout.HORIZONTAL);
         rowContainer.setGravity(Gravity.CENTER_VERTICAL);
         rowContainer.setPadding(50, 35, 50, 35);
         rowContainer.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        
+
         TextView reloadIcon = new TextView(this);
         reloadIcon.setText("↻");
         reloadIcon.setTextColor(COLOR_ACCENT);
         reloadIcon.setTextSize(30f);
         reloadIcon.setPadding(0, 0, 30, 0);
-        
+
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
         TextView label = new TextView(this);
@@ -275,29 +265,29 @@ public class MainActivity extends Activity {
         label.setTextColor(COLOR_TEXT_MAIN);
         label.setTextSize(16f);
         label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        
+
         TextView desc = new TextView(this);
         desc.setText("覆盖已授权的系统桌面、系统界面等");
         desc.setTextColor(COLOR_TEXT_SUB);
         desc.setTextSize(13f);
         desc.setPadding(0, 6, 0, 0);
-        
+
         textLayout.addView(label);
         textLayout.addView(desc);
-        
+
         rowContainer.addView(reloadIcon);
         rowContainer.addView(textLayout);
-        
+
         rowContainer.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
-                .setTitle("选择重载方式")
-                .setMessage("【重启界面】：测试截屏、动画。\n【重启框架】：测试电池、温控。")
-                .setPositiveButton("重启界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
-                .setNeutralButton("重启框架", (dialog, which) -> runRootCommand("killall system_server"))
-                .setNegativeButton("取消", null)
-                .show();
+                    .setTitle("选择重载方式")
+                    .setMessage("【重启界面】：测试截屏、动画。\n【重启框架】：测试电池、温控。")
+                    .setPositiveButton("重启界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
+                    .setNeutralButton("重启框架", (dialog, which) -> runRootCommand("killall system_server"))
+                    .setNegativeButton("取消", null)
+                    .show();
         });
-        
+
         group2.addView(rowContainer);
         root.addView(group2);
     }
@@ -309,18 +299,18 @@ public class MainActivity extends Activity {
         row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView t = new TextView(this);
-        t.setText(title); 
+        t.setText(title);
         t.setTextColor(COLOR_TEXT_MAIN);
-        t.setTextSize(16f); 
+        t.setTextSize(16f);
         t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView v = new TextView(this);
-        v.setText(value); 
+        v.setText(value);
         v.setTextColor(COLOR_TEXT_SUB);
-        v.setTextSize(14f); 
+        v.setTextSize(14f);
         v.setPadding(0, 8, 0, 0);
 
-        row.addView(t); 
+        row.addView(t);
         row.addView(v);
         parent.addView(row);
         return v;
@@ -359,7 +349,7 @@ public class MainActivity extends Activity {
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
         title.setTextSize(32f);
-        title.setTypeface(Typeface.create("serif", Typeface.BOLD)); 
+        title.setTypeface(Typeface.create("serif", Typeface.BOLD));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, 0, 0, 40);
         title.setLayoutParams(p);
@@ -369,7 +359,7 @@ public class MainActivity extends Activity {
     private LinearLayout createBaseScroll() {
         LinearLayout frame = new LinearLayout(this);
         frame.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        
+
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
         scrollView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -391,7 +381,7 @@ public class MainActivity extends Activity {
         shape.setColor(COLOR_CARD);
         shape.setCornerRadius(40f);
         group.setBackground(shape);
-        
+
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, 0, 0, 30);
         group.setLayoutParams(params);
@@ -411,18 +401,18 @@ public class MainActivity extends Activity {
         textLayout.setLayoutParams(textParams);
 
         TextView label = new TextView(this);
-        label.setText(labelText); 
+        label.setText(labelText);
         label.setTextColor(COLOR_TEXT_MAIN);
-        label.setTextSize(16f); 
+        label.setTextSize(16f);
         label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView desc = new TextView(this);
-        desc.setText(descText); 
+        desc.setText(descText);
         desc.setTextColor(COLOR_TEXT_SUB);
-        desc.setTextSize(13f); 
+        desc.setTextSize(13f);
         desc.setPadding(0, 6, 0, 0);
 
-        textLayout.addView(label); 
+        textLayout.addView(label);
         textLayout.addView(desc);
         row.addView(textLayout);
         return row;
@@ -433,7 +423,7 @@ public class MainActivity extends Activity {
         Switch switchView = new Switch(this);
         switchView.setChecked(prefs.getBoolean(prefKey, false));
         switchView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             ColorStateList thumbStateList = new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
@@ -446,14 +436,14 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean(prefKey, checked).apply();
             savePrefs();
         });
-        
+
         row.addView(switchView);
         parent.addView(row);
     }
 
     private void addInputItem(LinearLayout parent, String labelText, String descText, final String prefKey) {
         LinearLayout row = createBaseItem(labelText, descText);
-        
+
         TextView valueDisplay = new TextView(this);
         valueDisplay.setTextColor(COLOR_TEXT_SUB);
         valueDisplay.setTextSize(15f);
@@ -473,7 +463,7 @@ public class MainActivity extends Activity {
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.setText(currentValue);
         input.setPadding(50, 50, 50, 50);
-        
+
         LinearLayout container = new LinearLayout(this);
         container.setPadding(50, 20, 50, 20);
         container.addView(input);
@@ -502,7 +492,7 @@ public class MainActivity extends Activity {
             try {
                 Process process = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(process.getOutputStream());
-                os.writeBytes(cmd + "\n"); 
+                os.writeBytes(cmd + "\n");
                 os.writeBytes("exit\n");
                 os.flush();
                 os.close();
