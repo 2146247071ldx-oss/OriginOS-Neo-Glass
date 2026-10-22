@@ -5,7 +5,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -35,7 +38,7 @@ public class MainActivity extends Activity {
     private boolean isActivated = false;
     private XposedService xposedService;
 
-    private int COLOR_BG = Color.parseColor("#F7F8FA");
+    private int COLOR_BG = Color.parseColor("#F7F8FA"); // 保持轻微浅灰背景
     private int COLOR_CARD = Color.parseColor("#FFFFFF");
     private int COLOR_TEXT_MAIN = Color.parseColor("#111111");
     private int COLOR_TEXT_SUB = Color.parseColor("#777777");
@@ -49,9 +52,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout pageOverview, pageGame, pageSettings;
     private LinearLayout navOverview, navGame, navSettings;
-    private TextView tvOverviewIcon, tvOverviewLabel;
-    private TextView tvGameIcon, tvGameLabel;
-    private TextView tvSettingsIcon, tvSettingsLabel;
+    private TextView tvOverviewLabel, tvGameLabel, tvSettingsLabel;
     
     private int currentPage = 0;
 
@@ -113,42 +114,35 @@ public class MainActivity extends Activity {
 
         contentContainer = new FrameLayout(this);
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        contentParams.setMargins(0, 0, 0, dp2px(100));
+        contentParams.setMargins(0, 0, 0, dp2px(70));
         mainTabsContainer.addView(contentContainer, contentParams);
 
         initOverviewPage();
         initGamePage();
         initSettingsPage();
 
+        // 底部导航栏（仿官方贴底设计）
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER);
+        bottomBar.setBackgroundColor(Color.WHITE);
+        bottomBar.setElevation(dp2px(8));
         bottomBar.setPadding(dp2px(16), dp2px(12), dp2px(16), dp2px(12));
 
-        GradientDrawable barBg = new GradientDrawable();
-        barBg.setColor(Color.parseColor("#F2F3F5"));
-        barBg.setCornerRadius(dp2px(30));
-        bottomBar.setBackground(barBg);
-        bottomBar.setElevation(dp2px(4));
-
         FrameLayout.LayoutParams barParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        barParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        barParams.setMargins(0, 0, 0, dp2px(24));
+        barParams.gravity = Gravity.BOTTOM;
         mainTabsContainer.addView(bottomBar, barParams);
 
-        navOverview = createNavItem("🏠", "概览", bottomBar);
-        navGame = createNavItem("🎮", "游戏", bottomBar);
-        navSettings = createNavItem("⚙️", "设置", bottomBar);
+        navOverview = createNavItem("概览", bottomBar);
+        navGame = createNavItem("游戏", bottomBar);
+        navSettings = createNavItem("设置", bottomBar);
 
-        tvOverviewIcon = (TextView) navOverview.getChildAt(0);
-        tvOverviewLabel = (TextView) navOverview.getChildAt(1);
-        tvGameIcon = (TextView) navGame.getChildAt(0);
-        tvGameLabel = (TextView) navGame.getChildAt(1);
-        tvSettingsIcon = (TextView) navSettings.getChildAt(0);
-        tvSettingsLabel = (TextView) navSettings.getChildAt(1);
+        tvOverviewLabel = (TextView) navOverview.getChildAt(0);
+        tvGameLabel = (TextView) navGame.getChildAt(0);
+        tvSettingsLabel = (TextView) navSettings.getChildAt(0);
 
         navOverview.setOnClickListener(v -> switchPage(0));
         navGame.setOnClickListener(v -> switchPage(1));
@@ -160,19 +154,20 @@ public class MainActivity extends Activity {
         subPageContainer.setVisibility(View.GONE);
         contentContainer.removeAllViews();
 
-        tvOverviewIcon.setAlpha(0.4f); tvOverviewLabel.setTextColor(COLOR_TEXT_SUB); navOverview.setBackground(null);
-        tvGameIcon.setAlpha(0.4f); tvGameLabel.setTextColor(COLOR_TEXT_SUB); navGame.setBackground(null);
-        tvSettingsIcon.setAlpha(0.4f); tvSettingsLabel.setTextColor(COLOR_TEXT_SUB); navSettings.setBackground(null);
+        // 极简风格：选中变黑，未选中变灰
+        tvOverviewLabel.setTextColor(COLOR_TEXT_SUB);
+        tvGameLabel.setTextColor(COLOR_TEXT_SUB);
+        tvSettingsLabel.setTextColor(COLOR_TEXT_SUB);
 
         if (index == 0) {
             contentContainer.addView(pageOverview);
-            tvOverviewIcon.setAlpha(1f); tvOverviewLabel.setTextColor(COLOR_TEXT_MAIN); navOverview.setBackground(createRoundRectBg(Color.parseColor("#E5E7EB"), dp2px(20)));
+            tvOverviewLabel.setTextColor(COLOR_TEXT_MAIN);
         } else if (index == 1) {
             contentContainer.addView(pageGame);
-            tvGameIcon.setAlpha(1f); tvGameLabel.setTextColor(COLOR_TEXT_MAIN); navGame.setBackground(createRoundRectBg(Color.parseColor("#E5E7EB"), dp2px(20)));
+            tvGameLabel.setTextColor(COLOR_TEXT_MAIN);
         } else if (index == 2) {
             contentContainer.addView(pageSettings);
-            tvSettingsIcon.setAlpha(1f); tvSettingsLabel.setTextColor(COLOR_TEXT_MAIN); navSettings.setBackground(createRoundRectBg(Color.parseColor("#E5E7EB"), dp2px(20)));
+            tvSettingsLabel.setTextColor(COLOR_TEXT_MAIN);
         }
     }
 
@@ -185,10 +180,10 @@ public class MainActivity extends Activity {
 
         TextView btnBack = new TextView(this);
         btnBack.setText("< 返回");
-        btnBack.setTextSize(14);
-        btnBack.setTextColor(COLOR_ACCENT);
+        btnBack.setTextSize(15);
+        btnBack.setTextColor(COLOR_TEXT_MAIN);
         btnBack.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        btnBack.setPadding(0, 0, 0, dp2px(16));
+        btnBack.setPadding(0, 0, 0, dp2px(24));
         btnBack.setOnClickListener(v -> subPageContainer.setVisibility(View.GONE));
         root.addView(btnBack);
 
@@ -209,20 +204,23 @@ public class MainActivity extends Activity {
         pageOverview = createBaseScroll();
         LinearLayout root = (LinearLayout) ((ScrollView) pageOverview.getChildAt(0)).getChildAt(0);
 
+        // 顶部标题：居中，细体字
         TextView mainTitle = new TextView(this);
         mainTitle.setText("OriginBreaker");
         mainTitle.setTextColor(COLOR_TEXT_MAIN);
-        mainTitle.setTextSize(36);
-        mainTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        mainTitle.setTextSize(24);
+        mainTitle.setGravity(Gravity.CENTER);
+        mainTitle.setTypeface(Typeface.create("serif", Typeface.NORMAL)); // 纤细的衬线体，模仿LSPosed
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.setMargins(0, dp2px(16), 0, dp2px(24));
+        p.setMargins(0, dp2px(24), 0, dp2px(32));
         mainTitle.setLayoutParams(p);
         root.addView(mainTitle);
 
+        // 状态卡片
         FrameLayout statusCardFrame = new FrameLayout(this);
-        statusCardFrame.setBackground(createRoundRectBg(isActivated ? Color.parseColor("#E8F5E9") : Color.parseColor("#F2F3F5"), dp2px(20)));
+        statusCardFrame.setBackground(createRoundRectBg(isActivated ? Color.parseColor("#EDF7ED") : Color.parseColor("#F2F3F5"), dp2px(24)));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, 0, 0, dp2px(24));
+        params.setMargins(0, 0, 0, dp2px(16));
         statusCardFrame.setLayoutParams(params);
         statusCardFrame.setPadding(dp2px(24), dp2px(24), dp2px(24), dp2px(24));
 
@@ -231,42 +229,65 @@ public class MainActivity extends Activity {
         textContainer.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView tvStatusTitle = new TextView(this);
-        tvStatusTitle.setText(isActivated ? "已入局" : "未激活");
-        tvStatusTitle.setTextColor(isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#333333"));
-        tvStatusTitle.setTextSize(28);
-        tvStatusTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        tvStatusTitle.setText(isActivated ? "已激活" : "未激活");
+        tvStatusTitle.setTextColor(isActivated ? Color.parseColor("#1B5E20") : Color.parseColor("#333333"));
+        tvStatusTitle.setTextSize(22);
+        tvStatusTitle.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
 
-        TextView tvStatusSub = new TextView(this);
-        tvStatusSub.setText(isActivated ? "已与 LSPosed 连通，设置可以落地。" : "请在 LSPosed 中勾选本应用与系统框架。");
-        tvStatusSub.setTextColor(isActivated ? Color.parseColor("#388E3C") : Color.parseColor("#888888"));
-        tvStatusSub.setTextSize(14);
-        tvStatusSub.setPadding(0, dp2px(8), 0, dp2px(24));
+        TextView tvStatusVer = new TextView(this);
+        tvStatusVer.setText(xposedService != null ? "LSPosed " + xposedService.getFrameworkVersion() : "等待连接");
+        tvStatusVer.setTextColor(isActivated ? Color.parseColor("#1B5E20") : Color.parseColor("#888888"));
+        tvStatusVer.setTextSize(14);
+        tvStatusVer.setPadding(0, dp2px(4), 0, 0);
 
         TextView tvStatusFooter = new TextView(this);
-        tvStatusFooter.setText("此身已在局中");
-        tvStatusFooter.setTextColor(isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#888888"));
-        tvStatusFooter.setTextSize(13);
+        tvStatusFooter.setText("API 102");
+        tvStatusFooter.setTextColor(isActivated ? Color.parseColor("#1B5E20") : Color.parseColor("#888888"));
+        tvStatusFooter.setTextSize(14);
+        tvStatusFooter.setPadding(0, dp2px(24), 0, 0);
 
         textContainer.addView(tvStatusTitle);
-        textContainer.addView(tvStatusSub);
-        if (isActivated) textContainer.addView(tvStatusFooter);
+        textContainer.addView(tvStatusVer);
+        textContainer.addView(tvStatusFooter);
         statusCardFrame.addView(textContainer);
 
         if (isActivated) {
-            TextView tvCheck = new TextView(this);
-            tvCheck.setText("✓");
-            tvCheck.setTextColor(COLOR_GREEN);
-            tvCheck.setTextSize(100);
-            tvCheck.setTypeface(Typeface.DEFAULT_BOLD);
-            FrameLayout.LayoutParams checkParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            // 用代码画一个 LSPosed 风格的圆环对勾
+            View checkMark = new View(this) {
+                @Override
+                protected void onDraw(Canvas canvas) {
+                    super.onDraw(canvas);
+                    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(dp2px(6));
+                    paint.setColor(Color.parseColor("#A5D6A7")); // 浅绿圆环
+                    paint.setStrokeCap(Paint.Cap.ROUND);
+
+                    float size = Math.min(getWidth(), getHeight()) - dp2px(10);
+                    float cx = getWidth() / 2f;
+                    float cy = getHeight() / 2f;
+
+                    // 画大半圆
+                    canvas.drawArc(cx - size/2, cy - size/2, cx + size/2, cy + size/2, -90, 280, false, paint);
+
+                    // 画对勾
+                    Path path = new Path();
+                    path.moveTo(cx - size * 0.2f, cy);
+                    path.lineTo(cx - size * 0.05f, cy + size * 0.15f);
+                    path.lineTo(cx + size * 0.25f, cy - size * 0.15f);
+                    canvas.drawPath(path, paint);
+                }
+            };
+            FrameLayout.LayoutParams checkParams = new FrameLayout.LayoutParams(dp2px(80), dp2px(80));
             checkParams.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
             checkParams.setMargins(0, 0, dp2px(10), 0);
-            tvCheck.setLayoutParams(checkParams);
-            statusCardFrame.addView(tvCheck);
+            checkMark.setLayoutParams(checkParams);
+            statusCardFrame.addView(checkMark);
         }
 
         root.addView(statusCardFrame);
 
+        // 信息卡片
         LinearLayout infoCard = createListGroup();
         String appVer = "1.0";
         try {
@@ -277,19 +298,8 @@ public class MainActivity extends Activity {
         addInfoItem(infoCard, "系统版本", Build.DISPLAY);
         addInfoItem(infoCard, "应用版本", appVer);
         addInfoItem(infoCard, "Android 版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
-        addInfoItem(infoCard, "LSPosed 版本", xposedService != null ? "LSPosed " + xposedService.getFrameworkVersion() : "等待连接...");
+        addInfoItem(infoCard, "设备", Build.MODEL);
         root.addView(infoCard);
-
-        LinearLayout reloadCard = createBigCard("重载全部界面适配", "覆盖已授权的系统桌面、系统界面等", "↻",
-                () -> {
-                    new AlertDialog.Builder(this)
-                            .setTitle("选择重载方式")
-                            .setMessage("重启界面测试截屏、动画等更改。\n请勿随意重启系统框架。")
-                            .setPositiveButton("重启界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
-                            .setNegativeButton("取消", null)
-                            .show();
-                });
-        root.addView(reloadCard);
     }
 
     private void refreshOverviewStatus() {
@@ -343,7 +353,6 @@ public class MainActivity extends Activity {
 
     private LinearLayout buildRenderSettings() {
         LinearLayout group = createListGroup();
-        // 使用输入框强制设置刷新率
         addInputItem(group, "强制刷新率(Hz)", "输入144解锁高刷，填0恢复默认", "force_refresh_rate", "0");
         return group;
     }
@@ -361,26 +370,22 @@ public class MainActivity extends Activity {
         return group;
     }
 
-    private LinearLayout createNavItem(String iconStr, String textStr, LinearLayout parent) {
+    // --- 组件构建工具 ---
+
+    private LinearLayout createNavItem(String textStr, LinearLayout parent) {
         LinearLayout navLayout = new LinearLayout(this);
         navLayout.setOrientation(LinearLayout.VERTICAL);
         navLayout.setGravity(Gravity.CENTER);
-        navLayout.setPadding(dp2px(20), dp2px(10), dp2px(20), dp2px(10));
+        navLayout.setPadding(dp2px(16), dp2px(8), dp2px(16), dp2px(8));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         navLayout.setLayoutParams(p);
 
-        TextView icon = new TextView(this);
-        icon.setText(iconStr);
-        icon.setTextSize(20);
-        icon.setGravity(Gravity.CENTER);
-
         TextView label = new TextView(this);
         label.setText(textStr);
-        label.setTextSize(12);
-        label.setPadding(0, dp2px(4), 0, 0);
+        label.setTextSize(14);
         label.setGravity(Gravity.CENTER);
+        label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
-        navLayout.addView(icon);
         navLayout.addView(label);
         parent.addView(navLayout);
         return navLayout;
@@ -390,7 +395,7 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp2px(24), dp2px(20), dp2px(24), dp2px(20));
+        card.setPadding(dp2px(24), dp2px(24), dp2px(24), dp2px(24));
         card.setBackground(createRoundRectBg(COLOR_CARD, dp2px(20)));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, 0, 0, dp2px(16));
@@ -399,7 +404,7 @@ public class MainActivity extends Activity {
 
         TextView tvIcon = new TextView(this);
         tvIcon.setText(icon);
-        tvIcon.setTextSize(28);
+        tvIcon.setTextSize(24);
         tvIcon.setPadding(0, 0, dp2px(16), 0);
         card.addView(tvIcon);
 
@@ -411,7 +416,7 @@ public class MainActivity extends Activity {
         TextView tvTitle = new TextView(this);
         tvTitle.setText(title);
         tvTitle.setTextColor(COLOR_TEXT_MAIN);
-        tvTitle.setTextSize(18);
+        tvTitle.setTextSize(16);
         tvTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView tvDesc = new TextView(this);
@@ -427,7 +432,7 @@ public class MainActivity extends Activity {
         TextView arrow = new TextView(this);
         arrow.setText("›");
         arrow.setTextColor(Color.parseColor("#CCCCCC"));
-        arrow.setTextSize(24);
+        arrow.setTextSize(22);
         card.addView(arrow);
 
         card.setOnClickListener(v -> onClick.run());
@@ -438,10 +443,10 @@ public class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
-        title.setTextSize(28);
-        title.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        title.setTextSize(24);
+        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        p.setMargins(0, 0, 0, dp2px(24));
+        p.setMargins(0, dp2px(16), 0, dp2px(24));
         title.setLayoutParams(p);
         return title;
     }
@@ -455,7 +460,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp2px(24), dp2px(24), dp2px(24), dp2px(24));
+        root.setPadding(dp2px(20), dp2px(20), dp2px(20), dp2px(20));
 
         scrollView.addView(root);
         frame.addView(scrollView);
@@ -468,7 +473,7 @@ public class MainActivity extends Activity {
         group.setBackground(createRoundRectBg(COLOR_CARD, dp2px(20)));
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.setMargins(0, 0, 0, dp2px(24));
+        params.setMargins(0, 0, 0, dp2px(20));
         group.setLayoutParams(params);
         return group;
     }
@@ -494,7 +499,7 @@ public class MainActivity extends Activity {
         desc.setText(descText);
         desc.setTextColor(COLOR_TEXT_SUB);
         desc.setTextSize(13);
-        desc.setPadding(0, dp2px(6), 0, 0);
+        desc.setPadding(0, dp2px(4), 0, 0);
 
         textLayout.addView(label);
         textLayout.addView(desc);
@@ -530,7 +535,7 @@ public class MainActivity extends Activity {
         desc.setText(descText);
         desc.setTextColor(COLOR_TEXT_SUB);
         desc.setTextSize(13);
-        desc.setPadding(0, dp2px(6), 0, 0);
+        desc.setPadding(0, dp2px(4), 0, 0);
 
         textLayout.addView(label);
         textLayout.addView(desc);
@@ -569,17 +574,9 @@ public class MainActivity extends Activity {
                     
                     if ("thermal_temp".equals(prefKey)) {
                         runRootCommand("cmd battery set -f temp " + newValue);
-                        Toast.makeText(this, "已修改系统电池温度", Toast.LENGTH_SHORT).show();
-                    } else if ("force_refresh_rate".equals(prefKey)) {
-                        if ("0".equals(newValue)) {
-                            runRootCommand("settings put system min_refresh_rate 60");
-                            runRootCommand("settings put system peak_refresh_rate 120");
-                            Toast.makeText(this, "已恢复默认刷新率", Toast.LENGTH_SHORT).show();
-                        } else {
-                            runRootCommand("settings put system min_refresh_rate " + newValue);
-                            runRootCommand("settings put system peak_refresh_rate " + newValue);
-                            Toast.makeText(this, "已强制锁定屏幕刷新率为 " + newValue + "Hz", Toast.LENGTH_SHORT).show();
-                        }
+                        Toast.makeText(this, "已修改系统电池温度 (需Root)", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "保存成功，重启目标应用生效", Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -592,7 +589,7 @@ public class MainActivity extends Activity {
     private void addInfoItem(LinearLayout parent, String title, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(dp2px(24), dp2px(16), dp2px(24), dp2px(16));
+        row.setPadding(dp2px(24), dp2px(20), dp2px(24), dp2px(20));
 
         TextView t = new TextView(this);
         t.setText(title);
@@ -604,7 +601,7 @@ public class MainActivity extends Activity {
         v.setText(value);
         v.setTextColor(COLOR_TEXT_SUB);
         v.setTextSize(14);
-        v.setPadding(0, dp2px(8), 0, 0);
+        v.setPadding(0, dp2px(6), 0, 0);
 
         row.addView(t);
         row.addView(v);
