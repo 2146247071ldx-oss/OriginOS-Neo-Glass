@@ -30,6 +30,41 @@ jobs:
 
       - name: 编译 APK
         run: gradle --no-daemon --stacktrace assembleDebug
+      
+      - name: 检查 LSPosed 模块配置是否打包
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+
+          if [ ! -f "$APK" ]; then
+            echo "::error::找不到 APK: $APK"
+            exit 1
+          fi
+
+          for entry in \
+            "META-INF/xposed/java_init.list" \
+            "META-INF/xposed/module.prop" \
+            "META-INF/xposed/scope.list"
+          do
+            if ! unzip -Z1 "$APK" | grep -Fxq "$entry"; then
+              echo "::error::APK 缺少文件: $entry"
+              exit 1
+            fi
+            echo "检查通过: $entry"
+          done
+
+          echo "===== 入口类 ====="
+          unzip -p "$APK" META-INF/xposed/java_init.list
+
+          echo "===== 模块配置 ====="
+          unzip -p "$APK" META-INF/xposed/module.prop
+
+          echo "===== 作用域配置 ====="
+          unzip -p "$APK" META-INF/xposed/scope.list
+
+          echo "全部模块配置检查通过。"
 
       - name: 保存到 Actions Artifacts (备用)
         uses: actions/upload-artifact@v4
