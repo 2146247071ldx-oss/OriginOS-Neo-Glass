@@ -48,31 +48,31 @@ public class GlassHook extends XposedModule {
             };
 
             // 性能模式与散热风扇相关类
-            hookAllMethods(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.a", "a", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "v", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "m", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "n", forceTrueHooker);
+            safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.a", "a", forceTrueHooker);
+            safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "v", forceTrueHooker);
+            safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "m", forceTrueHooker);
+            safeHook(cl, "com.vivo.gameassistant.homegui.sideslide.panels.performance.modeshift.n", "n", forceTrueHooker);
             
             // 通用功能开关类
-            hookAllMethods(cl, "com.vivo.common.utils.w0", "a", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.a", "v0", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.a", "D1", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.a", "R0", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.a", "u1", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.utils.m0", "g", forceTrueHooker);
-            hookAllMethods(cl, "com.vivo.common.utils.m0", "f", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.utils.w0", "a", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.a", "v0", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.a", "D1", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.a", "R0", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.a", "u1", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.utils.m0", "g", forceTrueHooker);
+            safeHook(cl, "com.vivo.common.utils.m0", "f", forceTrueHooker);
 
             log(Log.INFO, TAG, "游戏魔盒 Hook 注入完毕！");
         }
     }
 
-    // 辅助方法：避免代码写得太长，防崩溃
-    private void hookAllMethods(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
+    // 辅助方法：改名为 safeHook 避免与 libxposed 的 hookAllMethods 冲突
+    private void safeHook(ClassLoader cl, String className, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> clazz = Class.forName(className, false, cl);
             hookAllMethods(clazz, methodName, hooker);
         } catch (Throwable t) {
-            log(Log.WARN, TAG, "找不到类 (正常现象): " + className);
+            log(Log.WARN, TAG, "找不到类或方法 (正常现象): " + className + "#" + methodName);
         }
     }
 }
