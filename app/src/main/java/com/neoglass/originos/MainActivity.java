@@ -68,14 +68,14 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
         applyTheme(); 
 
-        // 真实窗口模糊效果
+        // 核心修复：Android 12+ 原生窗口模糊 (绝对兼容 Android 16)
         if (prefs.getBoolean("theme_blur", false) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
                 getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
-                WindowManager.LayoutParams lp = getWindow().getAttributes();
-                lp.blurBehindRadius = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
-                getWindow().setAttributes(lp);
-            } catch (Exception ignored) {}
+                int blurRadius = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
+                // 使用官方公开的 API
+                getWindow().setBackgroundBlurRadius(blurRadius);
+            } catch (Throwable ignored) {}
         }
 
         try {
