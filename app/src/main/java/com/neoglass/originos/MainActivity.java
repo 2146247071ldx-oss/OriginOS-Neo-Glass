@@ -24,19 +24,26 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.DataOutputStream;
-import java.io.File;
 
 public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
     private boolean isActivated = false;
     
-    private int COLOR_BG, COLOR_CARD, COLOR_TEXT_MAIN, COLOR_TEXT_SUB, COLOR_ACCENT;
-    private int COLOR_STATUS_BG, COLOR_STATUS_TEXT, COLOR_BOTTOM_BAR;
-    
+    private int COLOR_BG = Color.parseColor("#F2F4F7");
+    private int COLOR_CARD = Color.parseColor("#FFFFFF");
+    private int COLOR_TEXT_MAIN = Color.parseColor("#111111");
+    private int COLOR_TEXT_SUB = Color.parseColor("#777777");
+    private int COLOR_ACCENT = Color.parseColor("#3B82F6");
+    private int COLOR_BOTTOM_BAR = Color.parseColor("#FFFFFF");
+
     private FrameLayout contentContainer;
     private LinearLayout pageOverview, pageModule, pageSettings;
     private TextView navOverview, navModule, navSettings;
+
+    public boolean isModuleActive() {
+        return false;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,11 +54,7 @@ public class MainActivity extends Activity {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
 
-        // 【核心修复】直接检测私有目录的文件，无需 Root 权限
-        File activeFile = new File(getFilesDir(), "hook_active");
-        isActivated = activeFile.exists();
-
-        initColors();
+        isActivated = isModuleActive();
 
         FrameLayout mainRoot = new FrameLayout(this);
         mainRoot.setBackgroundColor(COLOR_BG);
@@ -59,18 +62,17 @@ public class MainActivity extends Activity {
         contentContainer = new FrameLayout(this);
         FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        contentParams.setMargins(0, 0, 0, 220); // 加大底部留白，防止按钮被遮挡
+        contentParams.setMargins(0, 0, 0, 200); 
         mainRoot.addView(contentContainer, contentParams);
 
         initOverviewPage();
         initModulePage();
         initSettingsPage();
 
-        // 悬浮底栏
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
-        bottomBar.setPadding(30, 20, 30, 20);
+        bottomBar.setPadding(40, 20, 40, 20);
         
         GradientDrawable barBg = new GradientDrawable();
         barBg.setColor(COLOR_BOTTOM_BAR);
@@ -96,40 +98,31 @@ public class MainActivity extends Activity {
         switchPage(0);
     }
 
-    private void initColors() {
-        boolean useDark = (getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-        if (useDark) {
-            COLOR_BG = Color.parseColor("#121212"); COLOR_CARD = Color.parseColor("#1E1E1E");
-            COLOR_TEXT_MAIN = Color.parseColor("#EAEAEA"); COLOR_TEXT_SUB = Color.parseColor("#888888");
-            COLOR_ACCENT = Color.parseColor("#4CAF50");
-            COLOR_STATUS_BG = isActivated ? Color.parseColor("#1B2B1B") : Color.parseColor("#2A2A2A");
-            COLOR_STATUS_TEXT = isActivated ? Color.parseColor("#81C784") : Color.parseColor("#888888");
-            COLOR_BOTTOM_BAR = Color.parseColor("#2A2A2E");
-        } else {
-            COLOR_BG = Color.parseColor("#F3F4F9"); COLOR_CARD = Color.parseColor("#FFFFFF");
-            COLOR_TEXT_MAIN = Color.parseColor("#000000"); COLOR_TEXT_SUB = Color.parseColor("#888888");
-            COLOR_ACCENT = Color.parseColor("#3B82F6"); 
-            COLOR_STATUS_BG = isActivated ? Color.parseColor("#E8F5E9") : Color.parseColor("#E5E5EA");
-            COLOR_STATUS_TEXT = isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#888888");
-            COLOR_BOTTOM_BAR = Color.parseColor("#FFFFFF");
-        }
-    }
-
     private void switchPage(int index) {
         contentContainer.removeAllViews();
-        navOverview.setAlpha(0.5f); navModule.setAlpha(0.5f); navSettings.setAlpha(0.5f);
-        if (index == 0) { contentContainer.addView(pageOverview); navOverview.setAlpha(1f); }
-        else if (index == 1) { contentContainer.addView(pageModule); navModule.setAlpha(1f); }
-        else if (index == 2) { contentContainer.addView(pageSettings); navSettings.setAlpha(1f); }
+        navOverview.setTextColor(COLOR_TEXT_SUB); 
+        navModule.setTextColor(COLOR_TEXT_SUB); 
+        navSettings.setTextColor(COLOR_TEXT_SUB);
+        
+        if (index == 0) { 
+            contentContainer.addView(pageOverview); 
+            navOverview.setTextColor(COLOR_ACCENT); 
+        } else if (index == 1) { 
+            contentContainer.addView(pageModule); 
+            navModule.setTextColor(COLOR_ACCENT); 
+        } else if (index == 2) { 
+            contentContainer.addView(pageSettings); 
+            navSettings.setTextColor(COLOR_ACCENT); 
+        }
     }
 
     private TextView createNavItem(String text, LinearLayout parent) {
         TextView tv = new TextView(this);
-        tv.setText(text); tv.setTextSize(16f);
-        tv.setTypeface(Typeface.DEFAULT_BOLD);
-        tv.setTextColor(COLOR_TEXT_MAIN);
+        tv.setText(text); 
+        tv.setTextSize(15f);
+        tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         tv.setGravity(Gravity.CENTER);
-        tv.setPadding(50, 20, 50, 20);
+        tv.setPadding(50, 15, 50, 15);
         parent.addView(tv);
         return tv;
     }
@@ -138,34 +131,35 @@ public class MainActivity extends Activity {
         pageOverview = createBaseScroll();
         LinearLayout root = (LinearLayout) ((ScrollView) pageOverview.getChildAt(0)).getChildAt(0);
 
-        TextView title = createTitle("OriginBreaker");
+        TextView title = createTitle("概览");
         root.addView(title);
 
         LinearLayout statusCard = new LinearLayout(this);
         statusCard.setOrientation(LinearLayout.VERTICAL);
         statusCard.setPadding(50, 50, 50, 50);
+        
         GradientDrawable statusShape = new GradientDrawable();
-        statusShape.setColor(COLOR_STATUS_BG);
-        statusShape.setCornerRadius(50f);
+        statusShape.setColor(isActivated ? Color.parseColor("#E8F5E9") : Color.parseColor("#E5E5EA"));
+        statusShape.setCornerRadius(40f);
         statusCard.setBackground(statusShape);
+        statusCard.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         
         TextView statusTitle = new TextView(this);
-        statusTitle.setText(isActivated ? "已入局" : "尚未相逢");
-        statusTitle.setTextColor(COLOR_STATUS_TEXT);
-        statusTitle.setTextSize(28f);
-        statusTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        statusTitle.setText(isActivated ? "已激活" : "未激活");
+        statusTitle.setTextColor(isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#888888"));
+        statusTitle.setTextSize(24f);
+        statusTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         
         TextView statusSub = new TextView(this);
-        statusSub.setText(isActivated ? "已与 LSPosed 连通，设置可以落地。" : "框架服务还没接上，请重启手机或检查作用域。");
-        statusSub.setTextColor(COLOR_STATUS_TEXT);
+        statusSub.setText(isActivated ? "LSPosed 框架已连通，功能生效中。" : "请在 LSPosed 中勾选本应用与系统框架。");
+        statusSub.setTextColor(isActivated ? Color.parseColor("#388E3C") : Color.parseColor("#888888"));
         statusSub.setTextSize(14f);
         statusSub.setPadding(0, 10, 0, 0);
         
         statusCard.addView(statusTitle);
         statusCard.addView(statusSub);
         
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         statusParams.setMargins(0, 0, 0, 30);
         statusCard.setLayoutParams(statusParams);
         root.addView(statusCard);
@@ -187,17 +181,23 @@ public class MainActivity extends Activity {
     private void addInfoItem(LinearLayout parent, String title, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(50, 30, 50, 30);
+        row.setPadding(50, 25, 50, 25);
+        row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView t = new TextView(this);
-        t.setText(title); t.setTextColor(COLOR_TEXT_MAIN);
-        t.setTextSize(16f); t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setText(title); 
+        t.setTextColor(COLOR_TEXT_MAIN);
+        t.setTextSize(16f); 
+        t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView v = new TextView(this);
-        v.setText(value); v.setTextColor(COLOR_TEXT_SUB);
-        v.setTextSize(14f); v.setPadding(0, 8, 0, 0);
+        v.setText(value); 
+        v.setTextColor(COLOR_TEXT_SUB);
+        v.setTextSize(14f); 
+        v.setPadding(0, 8, 0, 0);
 
-        row.addView(t); row.addView(v);
+        row.addView(t); 
+        row.addView(v);
         parent.addView(row);
     }
 
@@ -237,47 +237,6 @@ public class MainActivity extends Activity {
         TextView title = createTitle("设置");
         root.addView(title);
 
-        LinearLayout modeBar = new LinearLayout(this);
-        modeBar.setOrientation(LinearLayout.HORIZONTAL);
-        modeBar.setGravity(Gravity.CENTER_VERTICAL);
-        modeBar.setPadding(0, 0, 0, 30);
-
-        String[] modes = {"跟随系统", "浅色", "深色"};
-        int currentMode = prefs.getInt("theme_mode", 0);
-
-        for (int i = 0; i < 3; i++) {
-            TextView btn = new TextView(this);
-            btn.setText(modes[i]);
-            btn.setTextSize(14f);
-            btn.setGravity(Gravity.CENTER);
-            btn.setPadding(0, 20, 0, 20);
-            btn.setTypeface(Typeface.DEFAULT_BOLD);
-            
-            GradientDrawable bg = new GradientDrawable();
-            bg.setCornerRadius(30f);
-            if (currentMode == i) {
-                bg.setColor(COLOR_CARD);
-                btn.setTextColor(COLOR_TEXT_MAIN);
-                btn.setElevation(5f);
-            } else {
-                bg.setColor(Color.parseColor("#00000000")); 
-                btn.setTextColor(COLOR_TEXT_SUB);
-            }
-            btn.setBackground(bg);
-            
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            p.setMargins(10, 0, 10, 0);
-            btn.setLayoutParams(p);
-            
-            final int modeIndex = i;
-            btn.setOnClickListener(v -> {
-                prefs.edit().putInt("theme_mode", modeIndex).apply();
-                recreate(); 
-            });
-            modeBar.addView(btn);
-        }
-        root.addView(modeBar);
-
         LinearLayout group1 = createListGroup();
         addInputItem(group1, "系统动画速度", "默认 1.0 (越小越快)", "anim_scale");
         addInputItem(group1, "伪装温控数值", "建议 25.0 (摄氏度)", "thermal_temp");
@@ -288,10 +247,9 @@ public class MainActivity extends Activity {
         TextView title = new TextView(this);
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
-        title.setTextSize(36f);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        title.setTextSize(32f);
+        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, 0, 0, 40);
         title.setLayoutParams(p);
         return title;
@@ -299,11 +257,17 @@ public class MainActivity extends Activity {
 
     private LinearLayout createBaseScroll() {
         LinearLayout frame = new LinearLayout(this);
+        frame.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
+        scrollView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(50, 100, 50, 50); // 调整了内边距
+        root.setPadding(50, 100, 50, 50);
+        root.setLayoutParams(new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         scrollView.addView(root);
         frame.addView(scrollView);
         return frame;
@@ -314,10 +278,10 @@ public class MainActivity extends Activity {
         group.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(COLOR_CARD);
-        shape.setCornerRadius(50f);
+        shape.setCornerRadius(40f);
         group.setBackground(shape);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, 0, 0, 30);
         group.setLayoutParams(params);
         return group;
@@ -327,24 +291,28 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(50, 40, 50, 40);
+        row.setPadding(50, 35, 50, 35);
         row.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         LinearLayout textLayout = new LinearLayout(this);
         textLayout.setOrientation(LinearLayout.VERTICAL);
-        // 【核心修复】强制文字容器占据剩余空间，防止被开关挤扁
         LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         textLayout.setLayoutParams(textParams);
 
         TextView label = new TextView(this);
-        label.setText(labelText); label.setTextColor(COLOR_TEXT_MAIN);
-        label.setTextSize(16f); label.setTypeface(Typeface.DEFAULT_BOLD);
+        label.setText(labelText); 
+        label.setTextColor(COLOR_TEXT_MAIN);
+        label.setTextSize(16f); 
+        label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
 
         TextView desc = new TextView(this);
-        desc.setText(descText); desc.setTextColor(COLOR_TEXT_SUB);
-        desc.setTextSize(13f); desc.setPadding(0, 6, 0, 0);
+        desc.setText(descText); 
+        desc.setTextColor(COLOR_TEXT_SUB);
+        desc.setTextSize(13f); 
+        desc.setPadding(0, 6, 0, 0);
 
-        textLayout.addView(label); textLayout.addView(desc);
+        textLayout.addView(label); 
+        textLayout.addView(desc);
         row.addView(textLayout);
         return row;
     }
@@ -353,7 +321,6 @@ public class MainActivity extends Activity {
         LinearLayout row = createBaseItem(labelText, descText);
         Switch switchView = new Switch(this);
         switchView.setChecked(prefs.getBoolean(prefKey, false));
-        // 防止开关把右边挤爆
         switchView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
