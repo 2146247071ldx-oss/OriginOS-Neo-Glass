@@ -23,16 +23,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # 新增：安装编译所需的 Android SDK 37 和 Build Tools 37.0.0
-      - name: 安装 Android SDK 37
+      - name: 安装 Android SDK 37 (预览版) 与 Build Tools 37
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-37" "build-tools;37.0.0" > /dev/null
+          # 通过 channel=3 安装 Android 37.0 预览版
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+          # 建立软链接，骗过 AGP 让它以为存在标准的 android-37 目录
+          ln -sf $ANDROID_HOME/platforms/android-37.0 $ANDROID_HOME/platforms/android-37 || true
 
       - name: 安装 Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          # 修改：将 Gradle 版本提升到 9.5.1 以兼容 AGP 9.2.1
+          # 必须使用 9.5.1，AGP 9.2.1 强制要求
           gradle-version: '9.5.1'
 
       - name: 编译 APK
@@ -42,14 +44,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           APK="app/build/outputs/apk/debug/app-debug.apk"
-
           if [ ! -f "$APK" ]; then
             echo "::error::找不到 APK: $APK"
             exit 1
           fi
-
           for entry in \
             "META-INF/xposed/java_init.list" \
             "META-INF/xposed/module.prop" \
@@ -61,17 +60,6 @@ jobs:
             fi
             echo "检查通过: $entry"
           done
-
-          echo "===== 入口类 ====="
-          unzip -p "$APK" META-INF/xposed/java_init.list
-
-          echo "===== 模块配置 ====="
-          unzip -p "$APK" META-INF/xposed/module.prop
-
-          echo "===== 作用域配置 ====="
-          unzip -p "$APK" META-INF/xposed/scope.list
-
-          echo "全部模块配置检查通过。"
 
       - name: 保存到 Actions Artifacts (备用)
         uses: actions/upload-artifact@v4
