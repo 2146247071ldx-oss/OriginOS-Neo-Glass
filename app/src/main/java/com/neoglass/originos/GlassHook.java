@@ -8,6 +8,7 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 import de.robv.android.xposed.XSharedPreferences;
+import java.io.File;
 
 public class GlassHook implements IXposedHookLoadPackage {
 
@@ -17,15 +18,21 @@ public class GlassHook implements IXposedHookLoadPackage {
     public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
         if ("com.neoglass.originos".equals(lpparam.packageName)) return;
 
-        prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
-        prefs.makeWorldReadable();
-
-        // 激活检测：标记文件
+        // 【核心修复】直接往 App 私有目录写一个标记文件，不需要任何 Root 权限
         if ("android".equals(lpparam.packageName) || "com.android.systemui".equals(lpparam.packageName)) {
             try {
-                Runtime.getRuntime().exec("su -c touch /data/local/tmp/origin_breaker_active");
+                File activeFile = new File("/data/data/com.neoglass.originos/files/hook_active");
+                if (!activeFile.getParentFile().exists()) {
+                    activeFile.getParentFile().mkdirs();
+                }
+                if (!activeFile.exists()) {
+                    activeFile.createNewFile();
+                }
             } catch (Throwable ignored) {}
         }
+
+        prefs = new XSharedPreferences("com.neoglass.originos", "NeoGlassPrefs");
+        prefs.makeWorldReadable();
 
         try {
             hookAnimationScale(lpparam);
