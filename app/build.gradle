@@ -28,6 +28,8 @@ android {
 }
 
 dependencies {
+    // 编译期依赖，不打进 APK
     compileOnly 'io.github.libxposed:api:102.0.0'
+    // 通信服务，用于真实查询激活状态
     implementation 'io.github.libxposed:service:102.0.0'
 }
