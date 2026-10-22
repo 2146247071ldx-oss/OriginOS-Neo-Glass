@@ -27,5 +27,9 @@ android {
 }
 
 dependencies {
+    // 编译时使用，不会打包进 APK
     compileOnly 'io.github.libxposed:api:102.0.0'
+    
+    // 必须加上这行：用于 App 界面与 LSPosed 框架通信，查询激活状态
+    implementation 'io.github.libxposed:service:102.0.0'
 }
