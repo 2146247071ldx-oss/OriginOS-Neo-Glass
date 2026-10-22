@@ -25,12 +25,17 @@ import android.widget.Toast;
 
 import java.io.DataOutputStream;
 
+// 引入 libxposed service 核心类，用于真实查询激活状态
+import io.github.libxposed.service.XposedService;
+import io.github.libxposed.service.XposedServiceHelper;
+
 public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
     private boolean isActivated = false;
-    
-    private int COLOR_BG = Color.parseColor("#F2F4F7");
+    private XposedService xposedService;
+
+    private int COLOR_BG = Color.parseColor("#F7F8FA");
     private int COLOR_CARD = Color.parseColor("#FFFFFF");
     private int COLOR_TEXT_MAIN = Color.parseColor("#111111");
     private int COLOR_TEXT_SUB = Color.parseColor("#777777");
@@ -41,9 +46,12 @@ public class MainActivity extends Activity {
     private LinearLayout pageOverview, pageModule, pageSettings;
     private TextView navOverview, navModule, navSettings;
 
-    public boolean isModuleActive() {
-        return false;
-    }
+    // 用于动态更新状态卡片
+    private LinearLayout statusCardView;
+    private TextView tvStatusTitle;
+    private TextView tvStatusSub;
+    private TextView tvCheckIcon;
+    private TextView tvLsposedVer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +62,20 @@ public class MainActivity extends Activity {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
         } catch (Exception ignored) {}
 
-        isActivated = isModuleActive();
+        // 1. 注册服务监听，真实查询 LSPosed 激活状态
+        XposedServiceHelper.registerListener(new XposedServiceHelper.OnServiceListener() {
+            @Override
+            public void onServiceBind(XposedService service) {
+                xposedService = service;
+                runOnUiThread(() -> updateStatusUI(true));
+            }
+
+            @Override
+            public void onServiceDied(XposedService service) {
+                xposedService = null;
+                runOnUiThread(() -> updateStatusUI(false));
+            }
+        });
 
         FrameLayout mainRoot = new FrameLayout(this);
         mainRoot.setBackgroundColor(COLOR_BG);
@@ -69,6 +90,7 @@ public class MainActivity extends Activity {
         initModulePage();
         initSettingsPage();
 
+        // 底部悬浮导航栏
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -77,6 +99,7 @@ public class MainActivity extends Activity {
         GradientDrawable barBg = new GradientDrawable();
         barBg.setColor(COLOR_BOTTOM_BAR);
         barBg.setCornerRadius(100f); 
+        barBg.setStroke(2, Color.parseColor("#E0E0E0"));
         bottomBar.setBackground(barBg);
         bottomBar.setElevation(20f);
 
@@ -96,6 +119,36 @@ public class MainActivity extends Activity {
 
         setContentView(mainRoot);
         switchPage(0);
+    }
+
+    // 动态更新卡片颜色与文字
+    private void updateStatusUI(boolean active) {
+        isActivated = active;
+        if (statusCardView == null) return;
+        
+        if (active) {
+            statusCardView.setBackground(createRoundRectBg(Color.parseColor("#E5F6E6"), 16f));
+            tvStatusTitle.setText("已入局");
+            tvStatusTitle.setTextColor(Color.parseColor("#2E7D32"));
+            tvStatusSub.setText("已与 LSPosed 连通，设置可以落地。");
+            tvCheckIcon.setVisibility(View.VISIBLE);
+            if (xposedService != null && tvLsposedVer != null) {
+                tvLsposedVer.setText("LSPosed " + xposedService.getFrameworkVersion());
+            }
+        } else {
+            statusCardView.setBackground(createRoundRectBg(Color.parseColor("#F2F3F5"), 16f));
+            tvStatusTitle.setText("未激活");
+            tvStatusTitle.setTextColor(Color.parseColor("#333333"));
+            tvStatusSub.setText("请在 LSPosed 中勾选本应用与系统框架。");
+            tvCheckIcon.setVisibility(View.GONE);
+        }
+    }
+
+    private GradientDrawable createRoundRectBg(int color, float radiusDp) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(color);
+        shape.setCornerRadius(radiusDp * getResources().getDisplayMetrics().density);
+        return shape;
     }
 
     private void switchPage(int index) {
@@ -131,39 +184,61 @@ public class MainActivity extends Activity {
         pageOverview = createBaseScroll();
         LinearLayout root = (LinearLayout) ((ScrollView) pageOverview.getChildAt(0)).getChildAt(0);
 
-        TextView title = createTitle("概览");
-        root.addView(title);
+        // 删除了左上角的“概览”，替换为类似图2的顶部主标题
+        TextView mainTitle = new TextView(this);
+        mainTitle.setText("OriginBreaker");
+        mainTitle.setTextColor(COLOR_TEXT_MAIN);
+        mainTitle.setTextSize(32f);
+        mainTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleParams.setMargins(0, 20, 0, 30);
+        mainTitle.setLayoutParams(titleParams);
+        root.addView(mainTitle);
 
-        LinearLayout statusCard = new LinearLayout(this);
-        statusCard.setOrientation(LinearLayout.VERTICAL);
-        statusCard.setPadding(50, 50, 50, 50);
-        
-        GradientDrawable statusShape = new GradientDrawable();
-        statusShape.setColor(isActivated ? Color.parseColor("#E8F5E9") : Color.parseColor("#E5E5EA"));
-        statusShape.setCornerRadius(40f);
-        statusCard.setBackground(statusShape);
-        statusCard.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        
-        TextView statusTitle = new TextView(this);
-        statusTitle.setText(isActivated ? "已激活" : "未激活");
-        statusTitle.setTextColor(isActivated ? Color.parseColor("#2E7D32") : Color.parseColor("#888888"));
-        statusTitle.setTextSize(24f);
-        statusTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        
-        TextView statusSub = new TextView(this);
-        statusSub.setText(isActivated ? "LSPosed 框架已连通，功能生效中。" : "请在 LSPosed 中勾选本应用与系统框架。");
-        statusSub.setTextColor(isActivated ? Color.parseColor("#388E3C") : Color.parseColor("#888888"));
-        statusSub.setTextSize(14f);
-        statusSub.setPadding(0, 10, 0, 0);
-        
-        statusCard.addView(statusTitle);
-        statusCard.addView(statusSub);
-        
-        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        statusParams.setMargins(0, 0, 0, 30);
-        statusCard.setLayoutParams(statusParams);
-        root.addView(statusCard);
+        // 状态卡片框架 (允许右侧放对勾)
+        FrameLayout statusFrame = new FrameLayout(this);
+        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        frameParams.setMargins(0, 0, 0, 20);
+        statusFrame.setLayoutParams(frameParams);
 
+        // 状态卡片内容
+        statusCardView = new LinearLayout(this);
+        statusCardView.setOrientation(LinearLayout.VERTICAL);
+        statusCardView.setPadding(60, 60, 60, 60);
+        statusCardView.setBackground(createRoundRectBg(Color.parseColor("#F2F3F5"), 16f));
+        statusCardView.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        tvStatusTitle = new TextView(this);
+        tvStatusTitle.setText("未激活");
+        tvStatusTitle.setTextColor(Color.parseColor("#333333"));
+        tvStatusTitle.setTextSize(24f);
+        tvStatusTitle.setTypeface(Typeface.create("serif", Typeface.BOLD));
+
+        tvStatusSub = new TextView(this);
+        tvStatusSub.setText("请在 LSPosed 中勾选本应用与系统框架。");
+        tvStatusSub.setTextColor(Color.parseColor("#888888"));
+        tvStatusSub.setTextSize(14f);
+        tvStatusSub.setPadding(0, 10, 0, 0);
+
+        statusCardView.addView(tvStatusTitle);
+        statusCardView.addView(tvStatusSub);
+
+        // 右侧大对勾
+        tvCheckIcon = new TextView(this);
+        tvCheckIcon.setText("✓");
+        tvCheckIcon.setTextColor(Color.parseColor("#4CAF50"));
+        tvCheckIcon.setTextSize(70f);
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        iconParams.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
+        iconParams.setMargins(0, 0, 40, 0);
+        tvCheckIcon.setLayoutParams(iconParams);
+        tvCheckIcon.setVisibility(View.GONE);
+
+        statusFrame.addView(statusCardView);
+        statusFrame.addView(tvCheckIcon);
+        root.addView(statusFrame);
+
+        // 信息卡片
         LinearLayout infoCard = createListGroup();
         String appVer = "1.0";
         try {
@@ -174,11 +249,60 @@ public class MainActivity extends Activity {
         addInfoItem(infoCard, "系统版本", Build.DISPLAY);
         addInfoItem(infoCard, "应用版本", appVer);
         addInfoItem(infoCard, "Android 版本", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+        
+        tvLsposedVer = addInfoItem(infoCard, "LSPosed 版本", "等待连接...");
         addInfoItem(infoCard, "设备型号", Build.MODEL);
         root.addView(infoCard);
+
+        // 重载按钮卡片 (把模块页的重载移到了概览页)
+        LinearLayout group2 = createListGroup();
+        LinearLayout rowContainer = new LinearLayout(this);
+        rowContainer.setOrientation(LinearLayout.HORIZONTAL);
+        rowContainer.setGravity(Gravity.CENTER_VERTICAL);
+        rowContainer.setPadding(50, 35, 50, 35);
+        rowContainer.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        
+        TextView reloadIcon = new TextView(this);
+        reloadIcon.setText("↻");
+        reloadIcon.setTextColor(COLOR_ACCENT);
+        reloadIcon.setTextSize(30f);
+        reloadIcon.setPadding(0, 0, 30, 0);
+        
+        LinearLayout textLayout = new LinearLayout(this);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        TextView label = new TextView(this);
+        label.setText("重载全部界面适配");
+        label.setTextColor(COLOR_TEXT_MAIN);
+        label.setTextSize(16f);
+        label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        
+        TextView desc = new TextView(this);
+        desc.setText("覆盖已授权的系统桌面、系统界面等");
+        desc.setTextColor(COLOR_TEXT_SUB);
+        desc.setTextSize(13f);
+        desc.setPadding(0, 6, 0, 0);
+        
+        textLayout.addView(label);
+        textLayout.addView(desc);
+        
+        rowContainer.addView(reloadIcon);
+        rowContainer.addView(textLayout);
+        
+        rowContainer.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle("选择重载方式")
+                .setMessage("【重启界面】：测试截屏、动画。\n【重启框架】：测试电池、温控。")
+                .setPositiveButton("重启界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
+                .setNeutralButton("重启框架", (dialog, which) -> runRootCommand("killall system_server"))
+                .setNegativeButton("取消", null)
+                .show();
+        });
+        
+        group2.addView(rowContainer);
+        root.addView(group2);
     }
 
-    private void addInfoItem(LinearLayout parent, String title, String value) {
+    private TextView addInfoItem(LinearLayout parent, String title, String value) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
         row.setPadding(50, 25, 50, 25);
@@ -199,6 +323,7 @@ public class MainActivity extends Activity {
         row.addView(t); 
         row.addView(v);
         parent.addView(row);
+        return v;
     }
 
     private void initModulePage() {
@@ -214,20 +339,6 @@ public class MainActivity extends Activity {
         addSwitchItem(group1, "限制充电上限", "达到 80% 视为充满，减缓老化", "limit_charge");
         addSwitchItem(group1, "息屏断网休眠", "没收后台流氓唤醒锁，极速省电", "wakelock_killer");
         root.addView(group1);
-        
-        LinearLayout group2 = createListGroup();
-        LinearLayout actionRow = createBaseItem("重载全部界面适配", "点击生效底层更改（温控/电池/UI）");
-        actionRow.setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                .setTitle("选择重载方式")
-                .setMessage("【重启界面】：测试截屏、动画。\n【重启框架】：测试电池、温控。")
-                .setPositiveButton("重启界面", (dialog, which) -> runRootCommand("pkill -f com.android.systemui"))
-                .setNeutralButton("重启框架", (dialog, which) -> runRootCommand("killall system_server"))
-                .setNegativeButton("取消", null)
-                .show();
-        });
-        group2.addView(actionRow);
-        root.addView(group2);
     }
 
     private void initSettingsPage() {
@@ -248,7 +359,7 @@ public class MainActivity extends Activity {
         title.setText(text);
         title.setTextColor(COLOR_TEXT_MAIN);
         title.setTextSize(32f);
-        title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        title.setTypeface(Typeface.create("serif", Typeface.BOLD)); 
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         p.setMargins(0, 0, 0, 40);
         title.setLayoutParams(p);
@@ -265,7 +376,7 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(50, 100, 50, 50);
+        root.setPadding(50, 80, 50, 50);
         root.setLayoutParams(new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         scrollView.addView(root);
