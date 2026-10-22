@@ -3,6 +3,7 @@ package com.neoglass.originos;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.graphics.Canvas;
@@ -11,6 +12,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.TypedValue;
@@ -18,6 +20,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -37,7 +40,6 @@ public class MainActivity extends Activity {
     private boolean isActivated = false;
     private XposedService xposedService;
 
-    // 动态颜色变量，根据深浅色主题切换
     private int COLOR_BG;
     private int COLOR_CARD;
     private int COLOR_TEXT_MAIN;
@@ -64,7 +66,17 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         prefs = getSharedPreferences("NeoGlassPrefs", Context.MODE_PRIVATE);
-        applyTheme(); // 初始化颜色
+        applyTheme(); 
+
+        // 真实窗口模糊效果
+        if (prefs.getBoolean("theme_blur", false) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                lp.blurBehindRadius = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30, getResources().getDisplayMetrics());
+                getWindow().setAttributes(lp);
+            } catch (Exception ignored) {}
+        }
 
         try {
             Runtime.getRuntime().exec("su -c chmod 644 /data/data/com.neoglass.originos/shared_prefs/NeoGlassPrefs.xml");
@@ -129,15 +141,24 @@ public class MainActivity extends Activity {
             COLOR_CARD = Color.parseColor("#1E1E1E");
             COLOR_TEXT_MAIN = Color.parseColor("#F0F0F0");
             COLOR_TEXT_SUB = Color.parseColor("#999999");
-            COLOR_ACCENT = Color.parseColor("#66B2FF");
             COLOR_GREEN = Color.parseColor("#81C784");
         } else {
             COLOR_BG = Color.parseColor("#F7F8FA");
             COLOR_CARD = Color.parseColor("#FFFFFF");
             COLOR_TEXT_MAIN = Color.parseColor("#111111");
             COLOR_TEXT_SUB = Color.parseColor("#777777");
-            COLOR_ACCENT = Color.parseColor("#3B82F6");
             COLOR_GREEN = Color.parseColor("#4CAF50");
+        }
+
+        if (prefs.getBoolean("theme_monet", false) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                int colorResId = (isDarkMode) ? android.R.color.system_accent1_400 : android.R.color.system_accent1_200;
+                COLOR_ACCENT = getResources().getColor(colorResId, getTheme());
+            } catch (Exception e) {
+                COLOR_ACCENT = isDarkMode ? Color.parseColor("#66B2FF") : Color.parseColor("#3B82F6");
+            }
+        } else {
+            COLOR_ACCENT = isDarkMode ? Color.parseColor("#66B2FF") : Color.parseColor("#3B82F6");
         }
     }
 
@@ -154,23 +175,51 @@ public class MainActivity extends Activity {
         initGamePage();
         initSettingsPage();
 
+        boolean isFloating = prefs.getBoolean("theme_floating_bar", true);
+        boolean isGlass = prefs.getBoolean("theme_liquid_glass", false);
+
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER);
-        bottomBar.setPadding(dp2px(16), dp2px(12), dp2px(16), dp2px(12));
-
-        GradientDrawable barBg = new GradientDrawable();
-        barBg.setColor(isDarkMode ? Color.parseColor("#2A2A2A") : Color.parseColor("#F2F3F5"));
-        barBg.setCornerRadius(dp2px(30));
-        bottomBar.setBackground(barBg);
-        bottomBar.setElevation(dp2px(4));
-
+        
         FrameLayout.LayoutParams barParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        barParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        barParams.setMargins(0, 0, 0, dp2px(24));
+
+        if (isFloating) {
+            bottomBar.setPadding(dp2px(16), dp2px(12), dp2px(16), dp2px(12));
+            
+            if (isGlass) {
+                GradientDrawable glassBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, 
+                    new int[]{ isDarkMode ? Color.parseColor("#4DFFFFFF") : Color.parseColor("#A6FFFFFF"), 
+                               isDarkMode ? Color.parseColor("#1A000000") : Color.parseColor("#40FFFFFF") });
+                glassBg.setCornerRadius(dp2px(30));
+                glassBg.setStroke(dp2px(1), isDarkMode ? Color.parseColor("#66FFFFFF") : Color.parseColor("#CCFFFFFF"));
+                bottomBar.setBackground(glassBg);
+                bottomBar.setElevation(dp2px(16));
+                bottomBar.setOutlineAmbientShadowColor(Color.BLACK);
+                bottomBar.setOutlineSpotShadowColor(Color.BLACK);
+            } else {
+                GradientDrawable barBg = new GradientDrawable();
+                barBg.setCornerRadius(dp2px(30));
+                barBg.setColor(isDarkMode ? Color.parseColor("#2A2A2A") : Color.parseColor("#F2F3F5"));
+                bottomBar.setBackground(barBg);
+                bottomBar.setElevation(dp2px(4));
+            }
+            barParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+            barParams.setMargins(0, 0, 0, dp2px(24));
+        } else {
+            bottomBar.setPadding(dp2px(16), dp2px(16), dp2px(16), dp2px(16));
+            GradientDrawable barBg = new GradientDrawable();
+            barBg.setColor(isDarkMode ? Color.parseColor("#1E1E1E") : Color.parseColor("#FFFFFF"));
+            barBg.setCornerRadius(0f);
+            bottomBar.setBackground(barBg);
+            barParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            barParams.gravity = Gravity.BOTTOM;
+            bottomBar.setElevation(dp2px(8));
+        }
+
         mainTabsContainer.addView(bottomBar, barParams);
 
         navOverview = createNavItem("🏠", "概览", bottomBar);
@@ -189,7 +238,6 @@ public class MainActivity extends Activity {
         navSettings.setOnClickListener(v -> switchPage(2, true));
     }
 
-    // 增加了切换 Tab 的过渡动画
     private void switchPage(int index, boolean animate) {
         currentPage = index;
         subPageContainer.setVisibility(View.GONE);
@@ -211,7 +259,14 @@ public class MainActivity extends Activity {
         tvGameIcon.setAlpha(0.4f); tvGameLabel.setTextColor(COLOR_TEXT_SUB); navGame.setBackground(null);
         tvSettingsIcon.setAlpha(0.4f); tvSettingsLabel.setTextColor(COLOR_TEXT_SUB); navSettings.setBackground(null);
 
-        int activeBgColor = isDarkMode ? Color.parseColor("#444444") : Color.parseColor("#E5E7EB");
+        boolean isGlass = prefs.getBoolean("theme_liquid_glass", false);
+        int activeBgColor;
+        
+        if (isGlass) {
+            activeBgColor = isDarkMode ? Color.parseColor("#33FFFFFF") : Color.parseColor("#80FFFFFF");
+        } else {
+            activeBgColor = isDarkMode ? Color.parseColor("#444444") : Color.parseColor("#E5E7EB");
+        }
 
         if (index == 0) {
             contentContainer.addView(pageOverview);
@@ -225,7 +280,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // 二级页面滑入动画
     private void openSubPage(String title, LinearLayout contentView) {
         subPageContainer.removeAllViews();
 
@@ -412,12 +466,31 @@ public class MainActivity extends Activity {
     private LinearLayout buildThermalSettings() {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "游戏温控欺骗", "系统读取假温度，拒绝降频 (需Root)", "thermal_spoof", this::showAdvancedThermalDialog);
-        addSwitchItem(group, "CPU 满血调度", "锁死大核最高频率，提升游戏帧率", "cpu_boost");
-        addSwitchItem(group, "解除温控锁频", "强行关闭系统底层温度降频保护", "disable_thermal");
+        addSwitchItem(group, "CPU 满血调度", "强制大核最高频率，提升游戏帧率 (需Root)", "cpu_boost", () -> {
+            if (prefs.getBoolean("cpu_boost", false)) {
+                runRootCommand("echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor; " +
+                               "echo performance > /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor; " +
+                               "echo performance > /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor");
+                Toast.makeText(this, "已强制锁定大核最高频率", Toast.LENGTH_SHORT).show();
+            } else {
+                runRootCommand("echo schedutil > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor; " +
+                               "echo schedutil > /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor; " +
+                               "echo schedutil > /sys/devices/system/cpu/cpu7/cpufreq/scaling_governor");
+                Toast.makeText(this, "已恢复系统默认调度", Toast.LENGTH_SHORT).show();
+            }
+        });
+        addSwitchItem(group, "解除温控锁频", "关闭系统底层温度降频保护 (需Root)", "disable_thermal", () -> {
+            if (prefs.getBoolean("disable_thermal", false)) {
+                runRootCommand("cmd thermalservice override-status 3");
+                Toast.makeText(this, "已尝试禁用温控服务", Toast.LENGTH_SHORT).show();
+            } else {
+                runRootCommand("cmd thermalservice override-status 0");
+                Toast.makeText(this, "已恢复温控服务", Toast.LENGTH_SHORT).show();
+            }
+        });
         return group;
     }
 
-    // 高级温控弹窗
     private void showAdvancedThermalDialog() {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -430,7 +503,7 @@ public class MainActivity extends Activity {
         tvValue.setGravity(Gravity.CENTER);
 
         SeekBar seekBar = new SeekBar(this);
-        seekBar.setMax(30); // 15 - 45 度
+        seekBar.setMax(30); 
         int currentTemp = Integer.parseInt(prefs.getString("thermal_temp_val", "25"));
         seekBar.setProgress(currentTemp - 15);
         
@@ -460,8 +533,16 @@ public class MainActivity extends Activity {
 
     private LinearLayout buildRenderSettings() {
         LinearLayout group = createListGroup();
-        addSwitchItem(group, "强制 144Hz 高刷", "打破系统限制，强行请求 144Hz 刷新率", "force_144hz");
-        addSwitchItem(group, "强制抗锯齿", "覆盖游戏纹理过滤设置", "force_aa");
+        addSwitchItem(group, "强制 144Hz 高刷", "打破系统限制，强行请求 144Hz 刷新率 (需勾选目标应用)", "force_144hz");
+        addSwitchItem(group, "强制抗锯齿", "强制开启 GPU MSAA 多重采样抗锯齿 (需Root)", "force_aa", () -> {
+            if (prefs.getBoolean("force_aa", false)) {
+                runRootCommand("setprop debug.egl.force_msaa 1");
+                Toast.makeText(this, "已尝试强制开启 GPU MSAA (重启游戏生效)", Toast.LENGTH_SHORT).show();
+            } else {
+                runRootCommand("setprop debug.egl.force_msaa 0");
+                Toast.makeText(this, "已关闭强制抗锯齿", Toast.LENGTH_SHORT).show();
+            }
+        });
         return group;
     }
 
@@ -469,7 +550,15 @@ public class MainActivity extends Activity {
         LinearLayout group = createListGroup();
         addSwitchItem(group, "防断流优化", "拦截系统的极速休眠网络切断", "net_keep_alive");
         addSwitchItem(group, "强制 IPv4 解析", "避免部分游戏因 IPv6 解析失败导致的高延迟", "force_ipv4");
-        addSwitchItem(group, "网络拥塞控制优化", "尝试启用 BBR 算法，降低延迟", "network_bbr");
+        addSwitchItem(group, "网络拥塞控制优化", "尝试启用 BBR 算法，降低延迟 (需Root与内核支持)", "network_bbr", () -> {
+            if (prefs.getBoolean("network_bbr", false)) {
+                runRootCommand("echo bbr > /proc/sys/net/ipv4/tcp_congestion_control");
+                Toast.makeText(this, "已尝试将 TCP 拥塞控制设为 BBR", Toast.LENGTH_SHORT).show();
+            } else {
+                runRootCommand("echo cubic > /proc/sys/net/ipv4/tcp_congestion_control");
+                Toast.makeText(this, "已恢复系统默认拥塞控制 (cubic)", Toast.LENGTH_SHORT).show();
+            }
+        });
         return group;
     }
 
@@ -510,17 +599,17 @@ public class MainActivity extends Activity {
             final String val = modeVals[i];
             btn.setOnClickListener(v -> {
                 prefs.edit().putString("theme_mode", val).apply();
-                recreate(); // 重建 Activity 应用主题
+                recreate(); 
             });
             modeGroup.addView(btn);
         }
         root.addView(modeGroup);
 
         LinearLayout group = createListGroup();
-        addSwitchItem(group, "启用 Monet 颜色", "跟随系统壁纸动态取色 (需 Android 12+)", "theme_monet");
-        addSwitchItem(group, "模糊效果", "启用顶栏和底栏的模糊效果", "theme_blur");
-        addSwitchItem(group, "悬浮底栏", "使用 Apple 风格的悬浮底栏", "theme_floating_bar");
-        addSwitchItem(group, "液态玻璃", "启用悬浮底栏的液态玻璃效果", "theme_liquid_glass");
+        addSwitchItem(group, "启用 Monet 颜色", "跟随系统壁纸动态取色 (需 Android 12+)", "theme_monet", this::recreate);
+        addSwitchItem(group, "全局模糊效果", "启用系统底层的窗口模糊效果", "theme_blur", this::recreate);
+        addSwitchItem(group, "悬浮底栏", "使用 Apple 风格的悬浮底栏", "theme_floating_bar", this::recreate);
+        addSwitchItem(group, "液态玻璃", "启用悬浮底栏的液态玻璃反光效果", "theme_liquid_glass", this::recreate);
         root.addView(group);
         return root;
     }
@@ -534,7 +623,7 @@ public class MainActivity extends Activity {
         header.setPadding(0, dp2px(32), 0, dp2px(32));
 
         TextView tvAvatar = new TextView(this);
-        tvAvatar.setText("🐱");
+        tvAvatar.setText("🛡️");
         tvAvatar.setTextSize(64);
         tvAvatar.setGravity(Gravity.CENTER);
         header.addView(tvAvatar);
@@ -548,7 +637,7 @@ public class MainActivity extends Activity {
         header.addView(tvName);
 
         TextView tvSlogan = new TextView(this);
-        tvSlogan.setText("万象皆可调，唯心意不可替。");
+        tvSlogan.setText("突破限制，释放潜能。");
         tvSlogan.setTextSize(14);
         tvSlogan.setTextColor(COLOR_TEXT_SUB);
         header.addView(tvSlogan);
@@ -563,7 +652,7 @@ public class MainActivity extends Activity {
 
         LinearLayout descGroup = createListGroup();
         TextView tvDesc = new TextView(this);
-        tvDesc.setText("OriginBreaker 是给 OriginOS 系统界面准备的专属游戏强化模块。基于 libxposed 102 API 工作，把温控、动画、高刷等底层调度权限交给你自己掌控。");
+        tvDesc.setText("一款专为 OriginOS 打造的底层性能调度与游戏辅助模块。基于 libxposed 102 API，助你掌控温控、高刷与系统隐藏功能。");
         tvDesc.setTextSize(14);
         tvDesc.setTextColor(COLOR_TEXT_MAIN);
         tvDesc.setLineSpacing(dp2px(4), 1f);
@@ -581,8 +670,9 @@ public class MainActivity extends Activity {
         TextView tvLinks = createSubTitle("项目链接");
         root.addView(tvLinks);
         LinearLayout linkGroup = createListGroup();
+        
         LinearLayout rowAuthor = createBaseItem("作者酷安主页", "惩煦");
-        rowAuthor.setOnClickListener(v -> Toast.makeText(this, "https://www.coolapk.com/u/39927079", Toast.LENGTH_LONG).show());
+        rowAuthor.setOnClickListener(v -> openCoolapkAuthorPage());
         linkGroup.addView(rowAuthor);
         root.addView(linkGroup);
 
@@ -599,6 +689,22 @@ public class MainActivity extends Activity {
         root.addView(disGroup);
 
         return root;
+    }
+
+    private void openCoolapkAuthorPage() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("coolmarket://u/39927079"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.coolapk.com/u/39927079"));
+                webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(webIntent);
+            } catch (Exception ex) {
+                Toast.makeText(this, "无法打开链接", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private TextView createSubTitle(String text) {
@@ -765,7 +871,7 @@ public class MainActivity extends Activity {
         addSwitchItem(parent, labelText, descText, prefKey, null);
     }
 
-    private void addSwitchItem(LinearLayout parent, String labelText, String descText, final String prefKey, Runnable onCheckedCallback) {
+    private void addSwitchItem(LinearLayout parent, String labelText, String descText, final String prefKey, Runnable onChangedCallback) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -793,11 +899,15 @@ public class MainActivity extends Activity {
         row.addView(textLayout);
 
         Switch switchView = new Switch(this);
-        switchView.setChecked(prefs.getBoolean(prefKey, false));
+        boolean defaultValue = prefKey.equals("theme_floating_bar");
+        switchView.setChecked(prefs.getBoolean(prefKey, defaultValue));
+        
         switchView.setOnCheckedChangeListener((buttonView, checked) -> {
             prefs.edit().putBoolean(prefKey, checked).apply();
-            if (checked && onCheckedCallback != null) {
-                onCheckedCallback.run();
+            if (onChangedCallback != null) {
+                onChangedCallback.run();
+            } else {
+                Toast.makeText(this, labelText + (checked ? " 已开启" : " 已关闭"), Toast.LENGTH_SHORT).show();
             }
         });
         row.addView(switchView);
